@@ -1,8 +1,17 @@
-import { describe, it } from 'vitest';
-import { bufferToRawString } from '../helpers';
-import { createMutant, getMutantById, transferMutant } from '../api';
-import { fetchLocalFile, signAndOrSendTransaction } from './helpers';
-import { TEST_ACCOUNTS, TEST_ENV } from './shared';
+import { describe, expect, it } from 'vitest';
+import { bytifyRawString } from '../helpers';
+import {
+  createCluster,
+  createMutant,
+  createSpore,
+  getClusterByOutPoint,
+  getMutantByOutPoint,
+  transferMutant,
+} from '../api';
+import { OutPointRecord, fetchLocalFile, getSporeOutput, retryQuery, signAndOrSendTransaction } from './helpers';
+import { SPORE_OUTPOINT_RECORDS, TEST_ACCOUNTS, TEST_ENV } from './shared';
+import { BI } from '@ckb-lumos/bi';
+import { unpackToRawMutantArgs } from '../codec';
 
 describe('Mutant', function () {
   const { rpc, config } = TEST_ENV;
@@ -46,7 +55,7 @@ describe('Mutant', function () {
     });
 
     // Sign and send transaction
-    await signAndOrSendTransaction({
+    const { hash } = await signAndOrSendTransaction({
       account: ALICE,
       txSkeleton,
       config,
@@ -77,7 +86,7 @@ describe('Mutant', function () {
     });
 
     // Sign and send transaction
-    await signAndOrSendTransaction({
+    const { hash } = await signAndOrSendTransaction({
       account: ALICE,
       txSkeleton,
       config,
@@ -136,7 +145,7 @@ describe('Mutant', function () {
         expect(mutantReference!.referenceType).toEqual('none');
       }
 
-      const hash = await signAndSendTransaction({
+      const { hash } = await signAndOrSendTransaction({
         account: ALICE,
         txSkeleton,
         config,
@@ -164,7 +173,7 @@ describe('Mutant', function () {
         toLock: ALICE.lock,
         config,
       });
-      const hash = await signAndSendTransaction({
+      const { hash } = await signAndOrSendTransaction({
         account: ALICE,
         txSkeleton,
         config,
@@ -216,7 +225,7 @@ describe('Mutant', function () {
 
       console.log('ALICE address:', ALICE.address);
       console.log('CHARLIE address:', CHARLIE.address);
-      await signAndSendTransaction({
+      await signAndOrSendTransaction({
         account: ALICE,
         txSkeleton,
         config,
