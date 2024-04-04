@@ -1,24 +1,8 @@
-import { describe, expect, it } from 'vitest';
-import { asciiLowercase, bytifyRawString } from '../helpers';
-import {
-  createCluster,
-  createMutant,
-  createSpore,
-  getClusterByOutPoint,
-  getMutantByOutPoint,
-  transferMutant,
-} from '../api';
-import {
-  OutPointRecord,
-  fetchLocalFile,
-  getSporeOutput,
-  popRecord,
-  retryQuery,
-  signAndSendTransaction,
-} from './helpers';
-import { CLUSTER_OUTPOINT_RECORDS, SPORE_OUTPOINT_RECORDS, TEST_ACCOUNTS, TEST_ENV } from './shared';
-import { BI } from '@ckb-lumos/bi';
-import { unpackToRawMutantArgs } from '../codec';
+import { describe, it } from 'vitest';
+import { bufferToRawString } from '../helpers';
+import { createMutant, getMutantById, transferMutant } from '../api';
+import { fetchLocalFile, signAndOrSendTransaction } from './helpers';
+import { TEST_ACCOUNTS, TEST_ENV } from './shared';
 
 describe('Mutant', function () {
   const { rpc, config } = TEST_ENV;
@@ -62,7 +46,7 @@ describe('Mutant', function () {
     });
 
     // Sign and send transaction
-    const hash = await signAndSendTransaction({
+    await signAndOrSendTransaction({
       account: ALICE,
       txSkeleton,
       config,
@@ -93,7 +77,7 @@ describe('Mutant', function () {
     });
 
     // Sign and send transaction
-    const hash = await signAndSendTransaction({
+    await signAndOrSendTransaction({
       account: ALICE,
       txSkeleton,
       config,
