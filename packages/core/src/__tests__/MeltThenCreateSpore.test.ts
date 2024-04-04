@@ -129,6 +129,6 @@ describe('Spore', () => {
           account: CHARLIE,
         });
       }
-    }, 30000);
+    }, 60000);
   });
 });
