@@ -20,19 +20,38 @@ describe('Spore', () => {
   let existingSporeRecord: OutPointRecord | undefined;
   let existingClusterRecord: OutPointRecord | undefined;
 
-  afterAll(async () => {
-    await cleanupRecords({
-      name: 'Spore',
-    });
-  }, 0);
-
   describe('Spore basics', () => {
-    it('Create a Spore', async () => {
-      if (TEST_VARIABLES.network !== 'devnet') {
-        // TODO: Wait for some block times to prevent double-spend, should resolve issue#25
-        await waitForMilliseconds(10000);
-      }
+    it('Create a Cluster', async () => {
+      const { txSkeleton, outputIndex } = await createCluster({
+        data: {
+          name: 'dob cluster',
+          description: 'Testing only',
+        },
+        fromInfos: [CHARLIE.address],
+        toLock: CHARLIE.lock,
+        config,
+      });
 
+      const { hash } = await signAndOrSendTransaction({
+        account: CHARLIE,
+        txSkeleton,
+        config,
+        rpc,
+        send: true,
+      });
+
+      if (hash) {
+        existingClusterRecord = {
+          outPoint: {
+            txHash: hash,
+            index: BI.from(outputIndex).toHexString(),
+          },
+          account: CHARLIE,
+        };
+      }
+    }, 60000);
+
+    it('Create a Spore', async () => {
       const { txSkeleton, outputIndex, reference } = await createSpore({
         data: {
           contentType: 'text/plain',
@@ -69,36 +88,7 @@ describe('Spore', () => {
           account: ALICE,
         };
       }
-    }, 0);
-
-    it('Create a Cluster', async () => {
-      const { txSkeleton, outputIndex } = await createCluster({
-        data: {
-          name: 'dob cluster',
-          description: 'Testing only',
-        },
-        fromInfos: [CHARLIE.address],
-        toLock: CHARLIE.lock,
-        config,
-      });
-
-      const { hash } = await signAndOrSendTransaction({
-        account: CHARLIE,
-        txSkeleton,
-        config,
-        rpc,
-        send: true,
-      });
-      if (hash) {
-        existingClusterRecord = {
-          outPoint: {
-            txHash: hash,
-            index: BI.from(outputIndex).toHexString(),
-          },
-          account: CHARLIE,
-        };
-      }
-    }, 0);
+    }, 60000);
 
     it('Melt and Create a Spore', async () => {
       console.log('check for spore cell: ', existingSporeRecord);
