@@ -1,15 +1,24 @@
 import { describe, expect, it, afterAll } from 'vitest';
 import { BI } from '@ckb-lumos/lumos';
-import { bytifyRawString } from '../helpers';
+import { bytifyRawString, waitForMilliseconds } from '../helpers';
 import { createSpore, getSporeByOutPoint, createCluster, getClusterByOutPoint } from '../api';
-import { expectCellDep, expectTypeId, expectTypeCell } from './helpers';
+import { expectCellDep, expectTypeId, expectTypeCell, OutPointRecord } from './helpers';
 import { getSporeOutput, popRecord, retryQuery, signAndOrSendTransaction } from './helpers';
-import { TEST_ACCOUNTS, TEST_ENV, SPORE_OUTPOINT_RECORDS, cleanupRecords, CLUSTER_OUTPOINT_RECORDS } from './shared';
+import {
+  TEST_ACCOUNTS,
+  TEST_ENV,
+  SPORE_OUTPOINT_RECORDS,
+  cleanupRecords,
+  CLUSTER_OUTPOINT_RECORDS,
+  TEST_VARIABLES,
+} from './shared';
 import { meltThenCreateSpore } from '../api/composed/spore/meltThenCreateSpore';
 
 describe('Spore', () => {
   const { rpc, config } = TEST_ENV;
   const { CHARLIE, ALICE } = TEST_ACCOUNTS;
+  let existingSporeRecord: OutPointRecord | undefined;
+  let existingClusterRecord: OutPointRecord | undefined;
 
   afterAll(async () => {
     await cleanupRecords({
@@ -19,6 +28,11 @@ describe('Spore', () => {
 
   describe('Spore basics', () => {
     it('Create a Spore', async () => {
+      if (TEST_VARIABLES.network !== 'devnet') {
+        // TODO: Wait for some block times to prevent double-spend, should resolve issue#25
+        await waitForMilliseconds(10000);
+      }
+
       const { txSkeleton, outputIndex, reference } = await createSpore({
         data: {
           contentType: 'text/plain',
@@ -47,13 +61,13 @@ describe('Spore', () => {
       });
 
       if (hash) {
-        SPORE_OUTPOINT_RECORDS.push({
+        existingSporeRecord = {
           outPoint: {
             txHash: hash,
             index: BI.from(outputIndex).toHexString(),
           },
           account: ALICE,
-        });
+        };
       }
     }, 0);
 
@@ -76,20 +90,25 @@ describe('Spore', () => {
         send: true,
       });
       if (hash) {
-        CLUSTER_OUTPOINT_RECORDS.push({
+        existingClusterRecord = {
           outPoint: {
             txHash: hash,
             index: BI.from(outputIndex).toHexString(),
           },
           account: CHARLIE,
-        });
+        };
       }
     }, 0);
 
     it('Melt and Create a Spore', async () => {
-      const sporeRecord = popRecord(SPORE_OUTPOINT_RECORDS, true);
+      console.log('check for spore cell: ', existingSporeRecord);
+      expect(existingSporeRecord).toBeDefined();
+      const sporeRecord = existingSporeRecord!;
       const sporeCell = await retryQuery(() => getSporeByOutPoint(sporeRecord.outPoint, config));
-      const clusterRecord = popRecord(CLUSTER_OUTPOINT_RECORDS, true);
+
+      console.log('check for cluster cell: ', existingClusterRecord);
+      expect(existingClusterRecord).toBeDefined();
+      const clusterRecord = existingClusterRecord!;
       const clusterCell = await retryQuery(() => getClusterByOutPoint(clusterRecord.outPoint, config));
       const clusterId = clusterCell.cellOutput.type!.args;
 
@@ -129,6 +148,6 @@ describe('Spore', () => {
           account: CHARLIE,
         });
       }
-    }, 60000);
+    }, 90000);
   });
 });
