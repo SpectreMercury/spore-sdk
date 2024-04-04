@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
 import { bytifyRawString } from '../helpers';
 import {
   createCluster,
@@ -9,7 +9,7 @@ import {
   transferMutant,
 } from '../api';
 import { OutPointRecord, fetchLocalFile, getSporeOutput, retryQuery, signAndOrSendTransaction } from './helpers';
-import { SPORE_OUTPOINT_RECORDS, TEST_ACCOUNTS, TEST_ENV } from './shared';
+import { SPORE_OUTPOINT_RECORDS, TEST_ACCOUNTS, TEST_ENV, cleanupRecords } from './shared';
 import { BI } from '@ckb-lumos/bi';
 import { unpackToRawMutantArgs } from '../codec';
 
@@ -18,6 +18,12 @@ describe('Mutant', function () {
   const { CHARLIE, ALICE } = TEST_ACCOUNTS;
   let existingMutantRecord: OutPointRecord | undefined;
   let existingClusterRecord: OutPointRecord | undefined;
+
+  afterAll(async () => {
+    await cleanupRecords({
+      name: 'Mutant',
+    });
+  }, 0);
 
   it('Create a Mutant', async function () {
     /**

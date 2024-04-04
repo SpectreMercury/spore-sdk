@@ -10,11 +10,13 @@ import { meltThenCreateSpore } from '../api/composed/spore/meltThenCreateSpore';
 describe('Spore', () => {
   const { rpc, config } = TEST_ENV;
   const { CHARLIE, ALICE } = TEST_ACCOUNTS;
+
   afterAll(async () => {
     await cleanupRecords({
       name: 'Spore',
     });
   }, 0);
+
   describe('Spore basics', () => {
     it('Create a Spore', async () => {
       const { txSkeleton, outputIndex, reference } = await createSpore({
