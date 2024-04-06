@@ -1,5 +1,12 @@
 # @spore-sdk/core
 
+## 0.2.0-beta.4
+
+### Patch Changes
+
+- 6360d42: adapt for mutant functionality and add new method for spore migration
+- 02c9861: support exact and power mode of min_payment
+
 ## 0.2.0-beta.3
 
 ### Patch Changes
