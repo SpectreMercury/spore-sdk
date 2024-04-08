@@ -1,18 +1,9 @@
 import { describe, expect, it, afterAll } from 'vitest';
-import { BI } from '@ckb-lumos/lumos';
+import { BI, Cell, Indexer } from '@ckb-lumos/lumos';
 import { getSporeScript } from '../config';
-import { unpackToRawMutantArgs } from '../codec';
-import { bufferToRawString, bytifyRawString } from '../helpers';
-import {
-  createSpore,
-  transferSpore,
-  meltSpore,
-  getSporeByOutPoint,
-  getMutantById,
-  createCluster,
-  getClusterByOutPoint,
-} from '../api';
-import { expectCellDep, expectTypeId, expectTypeCell, expectCellLock } from './helpers';
+import { bufferToRawString, bytifyRawString, getCellByLock } from '../helpers';
+import { createSpore, transferSpore, meltSpore, getSporeByOutPoint, createCluster, getClusterByOutPoint } from '../api';
+import { expectCellDep, expectTypeId, expectTypeCell, expectCellLock, Account } from './helpers';
 import { getSporeOutput, popRecord, retryQuery, signAndOrSendTransaction, OutPointRecord } from './helpers';
 import { TEST_ACCOUNTS, TEST_ENV, SPORE_OUTPOINT_RECORDS, cleanupRecords } from './shared';
 import { meltThenCreateSpore } from '../api/composed/spore/meltThenCreateSpore';
@@ -20,6 +11,14 @@ import { meltThenCreateSpore } from '../api/composed/spore/meltThenCreateSpore';
 describe('Spore', () => {
   const { rpc, config } = TEST_ENV;
   const { CHARLIE, ALICE } = TEST_ACCOUNTS;
+
+  async function getLiveCell(account: Account): Promise<Cell | undefined> {
+    const indexer = new Indexer(config.ckbIndexerUrl);
+    return getCellByLock({
+      lock: account.lock,
+      indexer,
+    });
+  }
 
   afterAll(async () => {
     await cleanupRecords({
@@ -30,13 +29,15 @@ describe('Spore', () => {
   describe('Spore basics', () => {
     let existingSporeRecord: OutPointRecord | undefined;
     it('Create a Spore', async () => {
+      const capacityCell = await getLiveCell(CHARLIE);
       const { txSkeleton, outputIndex, reference } = await createSpore({
         data: {
           contentType: 'text/plain',
           content: bytifyRawString('content'),
         },
         toLock: CHARLIE.lock,
-        fromInfos: [CHARLIE.address],
+        fromInfos: [],
+        fromCells: [capacityCell!],
         config,
       });
 
@@ -307,17 +308,16 @@ describe('Spore', () => {
     }, 60000);
 
     it('Melt and Create a Spore', async () => {
-      console.log('check for spore cell: ', existingSporeRecord);
       expect(existingSporeRecord).toBeDefined();
       const sporeRecord = existingSporeRecord!;
       const sporeCell = await retryQuery(() => getSporeByOutPoint(sporeRecord.outPoint, config));
 
-      console.log('check for cluster cell: ', existingClusterRecord);
       expect(existingClusterRecord).toBeDefined();
       const clusterRecord = existingClusterRecord!;
       const clusterCell = await retryQuery(() => getClusterByOutPoint(clusterRecord.outPoint, config));
       const clusterId = clusterCell.cellOutput.type!.args;
 
+      const capacityCell = await getLiveCell(CHARLIE);
       const { txSkeleton, outputIndex } = await meltThenCreateSpore({
         data: {
           contentType: 'text/plain',
@@ -325,7 +325,8 @@ describe('Spore', () => {
           clusterId,
         },
         toLock: CHARLIE.lock,
-        fromInfos: [CHARLIE.address],
+        fromInfos: [],
+        fromCells: [capacityCell!],
         outPoint: sporeCell.outPoint!,
         changeAddress: CHARLIE.address,
         config,

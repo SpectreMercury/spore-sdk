@@ -7,11 +7,13 @@ import { assertTransactionSkeletonSize, injectCapacityAndPayFee } from '../../..
 import { injectNewSporeOutput, injectNewSporeIds, SporeDataProps, getClusterAgentByOutPoint } from '../..';
 import { generateCreateSporeAction } from '../../../cobuild/action/spore/createSpore';
 import { injectCommonCobuildProof } from '../../../cobuild/base/witnessLayout';
+import { encodeToAddress } from '@ckb-lumos/lumos/helpers';
 
 export async function createSpore(props: {
   data: SporeDataProps;
   toLock: Script;
   fromInfos: FromInfo[];
+  fromCells?: Cell[];
   changeAddress?: Address;
   updateOutput?: (cell: Cell) => Cell;
   capacityMargin?: BIish | ((cell: Cell, margin: BI) => BIish);
@@ -47,6 +49,24 @@ export async function createSpore(props: {
   let txSkeleton = helpers.TransactionSkeleton({
     cellProvider: indexer,
   });
+
+  // Insert input cells in advance for particular purpose
+  if (props.fromCells) {
+    txSkeleton.update('inputs', (inputs) => {
+      for (const cell of props.fromCells!) {
+        const address = encodeToAddress(cell.cellOutput.lock, { config: config.lumos });
+        const customScript = {
+          script: cell.cellOutput.lock,
+          customData: cell.data,
+        };
+        if (props.fromInfos.indexOf(address) < 0 && props.fromInfos.indexOf(customScript) < 0) {
+          props.fromInfos.push(address);
+        }
+        inputs.push(cell);
+      }
+      return inputs;
+    });
+  }
 
   // If referencing a ClusterAgent, get it from the OutPoint
   let clusterAgentCell: Cell | undefined;
