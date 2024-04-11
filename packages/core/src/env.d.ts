@@ -6,6 +6,7 @@ interface ImportMetaEnv {
   readonly VITE_TESTS_CLUSTER_V1: string;
   readonly VITE_ACCOUNT_CHARLIE: string;
   readonly VITE_ACCOUNT_ALICE: string;
+  readonly VITE_ACCOUNT_BOB: string;
 }
 
 interface ImportMeta {
