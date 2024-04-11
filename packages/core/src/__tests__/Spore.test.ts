@@ -148,7 +148,46 @@ describe('Spore', () => {
         existingSporeRecord = void 0;
       }
     }, 0);
-  });
+    it('Create multiple Spores', async () => {
+      const { txSkeleton, outputIndices } = await createMultipleSpores({
+        sporeInfos: [
+          {
+            data: {
+              contentType: 'text/plain',
+              content: bytifyRawString('content-1'),
+            },
+            toLock: CHARLIE.lock,
+          },
+          {
+            data: {
+              contentType: 'text/plain',
+              content: bytifyRawString('content-2'),
+            },
+            toLock: ALICE.lock,
+          },
+        ],
+        fromInfos: [CHARLIE.address],
+        config,
+      });
+
+      // debug print witness layout
+      const lastWitness = txSkeleton.get('witnesses').last();
+      const witnessLayout = WitnessLayout.unpack(lastWitness!);
+      if (witnessLayout.type === 'SighashAll') {
+        const actions = witnessLayout.value.message!.actions;
+        const actionsData = actions.map((action) => SporeAction.unpack(action.data));
+        console.log(JSON.stringify(actionsData, null, 2));
+      }
+
+      await signAndOrSendTransaction({
+        account: CHARLIE,
+        txSkeleton,
+        config,
+        rpc,
+        send: true,
+      });
+    });
+  }, 0);
 
   describe('Spore with immortal mutant', () => {
     let existingSporeRecord: OutPointRecord | undefined;
@@ -241,48 +280,6 @@ describe('Spore', () => {
         }),
       ).rejects.toThrow();
     }, 0);
-  });
-
-  describe('Multiple Spores', () => {
-    it('Create multiple Spores', async () => {
-      const { txSkeleton, outputIndices } = await createMultipleSpores({
-        sporeInfos: [
-          {
-            data: {
-              contentType: 'text/plain',
-              content: bytifyRawString('content-1'),
-            },
-            toLock: CHARLIE.lock,
-          },
-          {
-            data: {
-              contentType: 'text/plain',
-              content: bytifyRawString('content-2'),
-            },
-            toLock: ALICE.lock,
-          },
-        ],
-        fromInfos: [CHARLIE.address],
-        config,
-      });
-
-      // debug print witness layout
-      const lastWitness = txSkeleton.get('witnesses').last();
-      const witnessLayout = WitnessLayout.unpack(lastWitness!);
-      if (witnessLayout.type === 'SighashAll') {
-        const actions = witnessLayout.value.message!.actions;
-        const actionsData = actions.map((action) => SporeAction.unpack(action.data));
-        console.log(JSON.stringify(actionsData, null, 2));
-      }
-
-      await signAndOrSendTransaction({
-        account: CHARLIE,
-        txSkeleton,
-        config,
-        rpc,
-        send: true,
-      });
-    });
   });
 
   describe('Spore melt and mint in one transaction', () => {
