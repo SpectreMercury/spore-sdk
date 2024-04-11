@@ -1,5 +1,12 @@
 # @spore-sdk/core
 
+## 0.2.0-beta.5
+
+### Patch Changes
+
+- 1fe201f: enable interface `createSpore` and `meltThenCreateSpore` to accept input cells pre-injection
+- 8beb742: add `createMultipleSpores` interface to create multiple spores in one transaction
+
 ## 0.2.0-beta.4
 
 ### Patch Changes
