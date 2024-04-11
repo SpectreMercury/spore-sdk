@@ -7,11 +7,13 @@ import { assertTransactionSkeletonSize, injectCapacityAndPayFee } from '../../..
 import { injectNewSporeOutput, injectNewSporeIds, SporeDataProps, getClusterAgentByOutPoint } from '../..';
 import { generateCreateSporeAction } from '../../../cobuild/action/spore/createSpore';
 import { injectCommonCobuildProof } from '../../../cobuild/base/witnessLayout';
+import { encodeToAddress } from '@ckb-lumos/lumos/helpers';
 
 export async function createSpore(props: {
   data: SporeDataProps;
   toLock: Script;
   fromInfos: FromInfo[];
+  fromCells?: Cell[];
   changeAddress?: Address;
   updateOutput?: (cell: Cell) => Cell;
   capacityMargin?: BIish | ((cell: Cell, margin: BI) => BIish);
@@ -47,6 +49,24 @@ export async function createSpore(props: {
   let txSkeleton = helpers.TransactionSkeleton({
     cellProvider: indexer,
   });
+
+  // Insert input cells in advance for particular purpose
+  if (props.fromCells) {
+    txSkeleton.update('inputs', (inputs) => {
+      for (const cell of props.fromCells!) {
+        const address = encodeToAddress(cell.cellOutput.lock, { config: config.lumos });
+        const customScript = {
+          script: cell.cellOutput.lock,
+          customData: cell.data,
+        };
+        if (props.fromInfos.indexOf(address) < 0 && props.fromInfos.indexOf(customScript) < 0) {
+          props.fromInfos.push(address);
+        }
+        inputs.push(cell);
+      }
+      return inputs;
+    });
+  }
 
   // If referencing a ClusterAgent, get it from the OutPoint
   let clusterAgentCell: Cell | undefined;
@@ -118,5 +138,139 @@ export async function createSpore(props: {
     outputIndex: injectNewSporeResult.outputIndex,
     reference: injectNewSporeResult.reference,
     mutantReference: injectNewSporeResult.mutantReference,
+  };
+}
+
+export async function createMultipleSpores(props: {
+  sporeInfos: {
+    data: SporeDataProps;
+    toLock: Script;
+  }[];
+  fromInfos: FromInfo[];
+  fromCells?: Cell[];
+  changeAddress?: Address;
+  updateOutput?: (cell: Cell) => Cell;
+  capacityMargin?: BIish | ((cell: Cell, margin: BI) => BIish);
+  cluster?: {
+    updateOutput?: (cell: Cell) => Cell;
+    capacityMargin?: BIish | ((cell: Cell, margin: BI) => BIish);
+    updateWitness?: HexString | ((witness: HexString) => HexString);
+  };
+  clusterAgentOutPoint?: OutPoint;
+  clusterAgent?: {
+    updateOutput?: (cell: Cell) => Cell;
+    capacityMargin?: BIish | ((cell: Cell, margin: BI) => BIish);
+    updateWitness?: HexString | ((witness: HexString) => HexString);
+  };
+  mutant?: {
+    paymentAmount?: (minPayment: BI, lock: Script, cell: Cell) => BIish;
+  };
+  maxTransactionSize?: number | false;
+  config?: SporeConfig;
+}): Promise<{
+  txSkeleton: helpers.TransactionSkeletonType;
+  outputIndices: number[];
+}> {
+  // Env
+  const config = props.config ?? getSporeConfig();
+  const indexer = new Indexer(config.ckbIndexerUrl, config.ckbNodeUrl);
+  const capacityMargin = BI.from(props.capacityMargin ?? 1_0000_0000);
+
+  // TransactionSkeleton
+  let txSkeleton = helpers.TransactionSkeleton({
+    cellProvider: indexer,
+  });
+
+  // Insert input cells in advance for particular purpose
+  if (props.fromCells) {
+    txSkeleton.update('inputs', (inputs) => {
+      for (const cell of props.fromCells!) {
+        const address = encodeToAddress(cell.cellOutput.lock, { config: config.lumos });
+        const customScript = {
+          script: cell.cellOutput.lock,
+          customData: cell.data,
+        };
+        if (props.fromInfos.indexOf(address) < 0 && props.fromInfos.indexOf(customScript) < 0) {
+          props.fromInfos.push(address);
+        }
+        inputs.push(cell);
+      }
+      return inputs;
+    });
+  }
+
+  // If referencing a ClusterAgent, get it from the OutPoint
+  let clusterAgentCell: Cell | undefined;
+  if (props.clusterAgentOutPoint) {
+    clusterAgentCell = await getClusterAgentByOutPoint(props.clusterAgentOutPoint, config);
+  }
+
+  // Create and inject Spores to Transaction.outputs
+  const injectNewSporeResults: Awaited<ReturnType<typeof injectNewSporeOutput>>[] = [];
+  for (const sporeInfo of props.sporeInfos) {
+    const result = await injectNewSporeOutput({
+      txSkeleton,
+      data: sporeInfo.data,
+      toLock: sporeInfo.toLock,
+      fromInfos: props.fromInfos,
+      changeAddress: props.changeAddress,
+      updateOutput: props.updateOutput,
+      clusterAgent: props.clusterAgent,
+      cluster: props.cluster,
+      mutant: props.mutant,
+      clusterAgentCell,
+      capacityMargin,
+      config,
+    });
+
+    txSkeleton = result.txSkeleton;
+    injectNewSporeResults.push(result);
+  }
+
+  // Inject needed capacity and pay fee
+  const sporeOutputIndices = injectNewSporeResults.map((r) => r.outputIndex);
+  const injectCapacityAndPayFeeResult = await injectCapacityAndPayFee({
+    txSkeleton,
+    fromInfos: props.fromInfos,
+    changeAddress: props.changeAddress,
+    updateTxSkeletonAfterCollection(_txSkeleton) {
+      // Generate and inject SporeID
+      _txSkeleton = injectNewSporeIds({
+        txSkeleton: _txSkeleton,
+        outputIndices: sporeOutputIndices,
+        config,
+      });
+
+      // Inject CobuildProof
+      const actions = [];
+      for (const injectNewSporeResult of injectNewSporeResults) {
+        const sporeCell = txSkeleton.get('outputs').get(injectNewSporeResult.outputIndex)!;
+        const sporeScript = getSporeScript(config, 'Spore', sporeCell.cellOutput.type!);
+        if (sporeScript.behaviors?.cobuild) {
+          const actionResult = generateCreateSporeAction({
+            txSkeleton: _txSkeleton,
+            reference: injectNewSporeResult.reference,
+            outputIndex: injectNewSporeResult.outputIndex,
+          });
+          actions.push(...actionResult.actions);
+        }
+      }
+      if (actions.length) {
+        const injectCobuildProofResult = injectCommonCobuildProof({
+          txSkeleton: _txSkeleton,
+          actions,
+        });
+        _txSkeleton = injectCobuildProofResult.txSkeleton;
+      }
+
+      return _txSkeleton;
+    },
+    config,
+  });
+  txSkeleton = injectCapacityAndPayFeeResult.txSkeleton;
+
+  return {
+    txSkeleton,
+    outputIndices: sporeOutputIndices,
   };
 }

@@ -6,6 +6,7 @@ import { getSporeByOutPoint, injectLiveSporeCell } from '../..';
 import { getSporeConfig, getSporeScript, SporeConfig } from '../../../config';
 import { generateCreateSporeAction, generateMeltSporeAction, injectCommonCobuildProof } from '../../../cobuild';
 import { assertTransactionSkeletonSize, injectCapacityAndPayFee } from '../../../helpers';
+import { encodeToAddress } from '@ckb-lumos/lumos/helpers';
 
 export async function meltThenCreateSpore(props: {
   outPoint: OutPoint;
@@ -17,6 +18,7 @@ export async function meltThenCreateSpore(props: {
   data: SporeDataProps;
   toLock: Script;
   fromInfos: FromInfo[];
+  fromCells?: Cell[];
   updateOutput?: (cell: Cell) => Cell;
   capacityMargin?: BIish | ((cell: Cell, margin: BI) => BIish);
   cluster?: {
@@ -55,6 +57,24 @@ export async function meltThenCreateSpore(props: {
   let txSkeleton = helpers.TransactionSkeleton({
     cellProvider: indexer,
   });
+
+  // Insert input cells in advance for particular purpose
+  if (props.fromCells) {
+    txSkeleton.update('inputs', (inputs) => {
+      for (const cell of props.fromCells!) {
+        const address = encodeToAddress(cell.cellOutput.lock, { config: config.lumos });
+        const customScript = {
+          script: cell.cellOutput.lock,
+          customData: cell.data,
+        };
+        if (props.fromInfos.indexOf(address) < 0 && props.fromInfos.indexOf(customScript) < 0) {
+          props.fromInfos.push(address);
+        }
+        inputs.push(cell);
+      }
+      return inputs;
+    });
+  }
 
   // Inject live spore to Transaction.inputs
   const meltSporeCell = await getSporeByOutPoint(props.outPoint, config);
