@@ -19,7 +19,7 @@ import { SporeAction, WitnessLayout } from '../cobuild';
 
 describe('Spore', () => {
   const { rpc, config } = TEST_ENV;
-  const { CHARLIE, ALICE } = TEST_ACCOUNTS;
+  const { CHARLIE, ALICE, BOB } = TEST_ACCOUNTS;
 
   async function getLiveCell(account: Account): Promise<Cell | undefined> {
     const indexer = new Indexer(config.ckbIndexerUrl);
@@ -163,10 +163,10 @@ describe('Spore', () => {
               contentType: 'text/plain',
               content: bytifyRawString('content-2'),
             },
-            toLock: ALICE.lock,
+            toLock: CHARLIE.lock,
           },
         ],
-        fromInfos: [CHARLIE.address],
+        fromInfos: [BOB.address],
         config,
       });
 
@@ -179,13 +179,24 @@ describe('Spore', () => {
         console.log(JSON.stringify(actionsData, null, 2));
       }
 
-      await signAndOrSendTransaction({
-        account: CHARLIE,
+      const { hash } = await signAndOrSendTransaction({
+        account: BOB,
         txSkeleton,
         config,
         rpc,
         send: true,
       });
+      if (hash) {
+        for (const outputIndex of outputIndices) {
+          SPORE_OUTPOINT_RECORDS.push({
+            outPoint: {
+              txHash: hash,
+              index: BI.from(outputIndex).toHexString(),
+            },
+            account: CHARLIE,
+          });
+        }
+      }
     });
   }, 0);
 

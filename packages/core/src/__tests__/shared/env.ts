@@ -20,6 +20,11 @@ export const TEST_VARIABLES = {
       'string',
       '0x49aa6d595ac46cc8e1a31b511754dd58f241a7d8a6ad29e83d6b0c1a82399f3d',
     ),
+    bob: getEnvVariable(
+      'VITE_ACCOUNT_BOB',
+      'string',
+      '0xee638e49a61bdc7fda63c412c29d5185eec2913f1122ab59b5d362ee9ef9bb50',
+    ),
   },
 };
 
@@ -36,4 +41,5 @@ export const TEST_ENV = {
 export const TEST_ACCOUNTS = {
   CHARLIE: createDefaultLockAccount(TEST_VARIABLES.accounts.charlie, config),
   ALICE: createDefaultLockAccount(TEST_VARIABLES.accounts.alice, config),
+  BOB: createDefaultLockAccount(TEST_VARIABLES.accounts.bob, config),
 };
