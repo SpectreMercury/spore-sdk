@@ -2,11 +2,20 @@ import { describe, expect, it, afterAll } from 'vitest';
 import { BI, Cell, Indexer } from '@ckb-lumos/lumos';
 import { getSporeScript } from '../config';
 import { bufferToRawString, bytifyRawString, getCellByLock } from '../helpers';
-import { createSpore, transferSpore, meltSpore, getSporeByOutPoint, createCluster, getClusterByOutPoint } from '../api';
+import {
+  createSpore,
+  transferSpore,
+  meltSpore,
+  getSporeByOutPoint,
+  createCluster,
+  getClusterByOutPoint,
+  createMultipleSpores,
+} from '../api';
 import { expectCellDep, expectTypeId, expectTypeCell, expectCellLock, Account } from './helpers';
 import { getSporeOutput, popRecord, retryQuery, signAndOrSendTransaction, OutPointRecord } from './helpers';
 import { TEST_ACCOUNTS, TEST_ENV, SPORE_OUTPOINT_RECORDS, cleanupRecords } from './shared';
 import { meltThenCreateSpore } from '../api/composed/spore/meltThenCreateSpore';
+import { SporeAction, WitnessLayout } from '../cobuild';
 
 describe('Spore', () => {
   const { rpc, config } = TEST_ENV;
@@ -232,6 +241,48 @@ describe('Spore', () => {
         }),
       ).rejects.toThrow();
     }, 0);
+  });
+
+  describe('Multiple Spores', () => {
+    it('Create multiple Spores', async () => {
+      const { txSkeleton, outputIndices } = await createMultipleSpores({
+        sporeInfos: [
+          {
+            data: {
+              contentType: 'text/plain',
+              content: bytifyRawString('content-1'),
+            },
+            toLock: CHARLIE.lock,
+          },
+          {
+            data: {
+              contentType: 'text/plain',
+              content: bytifyRawString('content-2'),
+            },
+            toLock: ALICE.lock,
+          },
+        ],
+        fromInfos: [CHARLIE.address],
+        config,
+      });
+
+      // debug print witness layout
+      const lastWitness = txSkeleton.get('witnesses').last();
+      const witnessLayout = WitnessLayout.unpack(lastWitness!);
+      if (witnessLayout.type === 'SighashAll') {
+        const actions = witnessLayout.value.message!.actions;
+        const actionsData = actions.map((action) => SporeAction.unpack(action.data));
+        console.log(JSON.stringify(actionsData, null, 2));
+      }
+
+      await signAndOrSendTransaction({
+        account: CHARLIE,
+        txSkeleton,
+        config,
+        rpc,
+        send: true,
+      });
+    });
   });
 
   describe('Spore melt and mint in one transaction', () => {
