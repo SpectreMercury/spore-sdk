@@ -396,6 +396,7 @@ describe('Spore', () => {
         outPoint: sporeCell.outPoint!,
         changeAddress: ALICE.address,
         config,
+        feeRate: 3000,
       });
 
       txSkeleton.get('inputs').forEach((cell) => {

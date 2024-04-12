@@ -20,6 +20,7 @@ export async function meltThenCreateSpore(props: {
   fromInfos: FromInfo[];
   extraInputCells?: Cell[];
   extraOutputCells?: Cell[];
+  feeRate?: BIish | undefined;
   updateOutput?: (cell: Cell) => Cell;
   capacityMargin?: BIish | ((cell: Cell, margin: BI) => BIish);
   cluster?: {
@@ -133,6 +134,7 @@ export async function meltThenCreateSpore(props: {
     fromInfos: props.fromInfos,
     changeAddress: props.changeAddress,
     config,
+    feeRate: props.feeRate,
     updateTxSkeletonAfterCollection(_txSkeleton) {
       // Generate and inject SporeID
       _txSkeleton = injectNewSporeIds({
