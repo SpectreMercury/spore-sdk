@@ -3,7 +3,7 @@ import { Address, Script } from '@ckb-lumos/base';
 import { FromInfo } from '@ckb-lumos/lumos/common-scripts';
 import { BI, Indexer, helpers, Cell, HexString, OutPoint } from '@ckb-lumos/lumos';
 import { getSporeConfig, getSporeScript, SporeConfig } from '../../../config';
-import { assertTransactionSkeletonSize, injectCapacityAndPayFee } from '../../../helpers';
+import { assertTransactionSkeletonSize, injectCapacityAndPayFee, setupCell } from '../../../helpers';
 import { injectNewSporeOutput, injectNewSporeIds, SporeDataProps, getClusterAgentByOutPoint } from '../..';
 import { generateCreateSporeAction } from '../../../cobuild/action/spore/createSpore';
 import { injectCommonCobuildProof } from '../../../cobuild/base/witnessLayout';
@@ -13,8 +13,10 @@ export async function createSpore(props: {
   data: SporeDataProps;
   toLock: Script;
   fromInfos: FromInfo[];
-  extraInputCells?: Cell[];
-  extraOutputCells?: Cell[];
+  prefixInputs?: Cell[];
+  prefixOutputs?: Cell[];
+  updateWitness?: HexString | ((witness: HexString) => HexString);
+  defaultWitness?: HexString;
   changeAddress?: Address;
   updateOutput?: (cell: Cell) => Cell;
   capacityMargin?: BIish | ((cell: Cell, margin: BI) => BIish);
@@ -52,27 +54,31 @@ export async function createSpore(props: {
   });
 
   // Insert input cells in advance for particular purpose
-  if (props.extraInputCells) {
-    txSkeleton.update('inputs', (inputs) => {
-      for (const cell of props.extraInputCells!) {
-        const address = encodeToAddress(cell.cellOutput.lock, { config: config.lumos });
-        const customScript = {
-          script: cell.cellOutput.lock,
-          customData: cell.data,
-        };
-        if (props.fromInfos.indexOf(address) < 0 && props.fromInfos.indexOf(customScript) < 0) {
-          props.fromInfos.push(address);
-        }
-        inputs.push(cell);
+  if (props.prefixInputs) {
+    for (const cell of props.prefixInputs!) {
+      const address = encodeToAddress(cell.cellOutput.lock, { config: config.lumos });
+      const customScript = {
+        script: cell.cellOutput.lock,
+        customData: cell.data,
+      };
+      if (props.fromInfos.indexOf(address) < 0 && props.fromInfos.indexOf(customScript) < 0) {
+        props.fromInfos.push(address);
       }
-      return inputs;
-    });
+      const setupCellResult = await setupCell({
+        txSkeleton,
+        input: cell,
+        updateWitness: props.updateWitness,
+        defaultWitness: props.defaultWitness,
+        config: config.lumos,
+      });
+      txSkeleton = setupCellResult.txSkeleton;
+    }
   }
 
   // Insert output cells in advance for particular purpose
-  if (props.extraOutputCells) {
+  if (props.prefixOutputs) {
     txSkeleton.update('outputs', (outputs) => {
-      props.extraOutputCells!.forEach((cell) => outputs.push(cell));
+      props.prefixOutputs!.forEach((cell) => outputs.push(cell));
       return outputs;
     });
   }
@@ -89,7 +95,7 @@ export async function createSpore(props: {
     data: props.data,
     toLock: props.toLock,
     fromInfos: props.fromInfos,
-    extraOutputLocks: props.extraOutputCells?.map((cell) => cell.cellOutput.lock),
+    extraOutputLocks: props.prefixOutputs?.map((cell) => cell.cellOutput.lock),
     changeAddress: props.changeAddress,
     updateOutput: props.updateOutput,
     clusterAgent: props.clusterAgent,

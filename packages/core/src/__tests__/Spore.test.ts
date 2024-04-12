@@ -1,5 +1,5 @@
 import { describe, expect, it, afterAll } from 'vitest';
-import { BI, Cell, Indexer, commons, hd, helpers } from '@ckb-lumos/lumos';
+import { BI, Cell, Indexer } from '@ckb-lumos/lumos';
 import { getSporeScript } from '../config';
 import { bufferToRawString, bytifyRawString, getCellByLock } from '../helpers';
 import {
@@ -51,7 +51,7 @@ describe('Spore', () => {
         },
         toLock: CHARLIE.lock,
         fromInfos: [],
-        extraInputCells: [capacityCell!],
+        prefixInputs: [capacityCell!],
         config,
       });
 
@@ -412,14 +412,6 @@ describe('Spore', () => {
         rpc,
         send: true,
       });
-
-      // const _txSkeleton = commons.common.prepareSigningEntries(txSkeleton, { config: config.lumos });
-      // const accounts = [existingClusterRecord!.account, existingSporeRecord!.account, existingSporeRecord!.account];
-      // const signatures = _txSkeleton.get('signingEntries').map(({ message }, index) => {
-      //   return accounts[index].signMessage(message);
-      // });
-      // const tx = helpers.sealTransaction(_txSkeleton, signatures.toJSON());
-      // const hash = await rpc.sendTransaction(tx, 'passthrough');
 
       if (hash) {
         SPORE_OUTPOINT_RECORDS.push({

@@ -80,20 +80,6 @@ export async function meltThenCreateSpore(props: {
       });
       txSkeleton = setupCellResult.txSkeleton;
     }
-    // txSkeleton = txSkeleton.update('inputs', (inputs) => {
-    //   for (const cell of props.prefixInputs!) {
-    //     const address = encodeToAddress(cell.cellOutput.lock, { config: config.lumos });
-    //     const customScript = {
-    //       script: cell.cellOutput.lock,
-    //       customData: cell.data,
-    //     };
-    //     if (props.fromInfos.indexOf(address) < 0 && props.fromInfos.indexOf(customScript) < 0) {
-    //       props.fromInfos.push(address);
-    //     }
-    //     inputs = inputs.push(cell);
-    //   }
-    //   return inputs;
-    // });
   }
 
   // Insert output cells in advance for particular purpose
