@@ -71,7 +71,7 @@ export async function meltThenCreateSpore(props: {
         if (props.fromInfos.indexOf(address) < 0 && props.fromInfos.indexOf(customScript) < 0) {
           props.fromInfos.push(address);
         }
-        inputs.push(cell);
+        inputs = inputs.push(cell);
       }
       return inputs;
     });
@@ -80,7 +80,7 @@ export async function meltThenCreateSpore(props: {
   // Insert output cells in advance for particular purpose
   if (props.extraOutputCells) {
     txSkeleton.update('outputs', (outputs) => {
-      props.extraOutputCells!.forEach((cell) => outputs.push(cell));
+      props.extraOutputCells!.forEach((cell) => (outputs = outputs.push(cell)));
       return outputs;
     });
   }
