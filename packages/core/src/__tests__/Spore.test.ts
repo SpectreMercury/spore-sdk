@@ -403,15 +403,9 @@ describe('Spore', () => {
         expect(cell == clusterCell).toBeFalsy();
       });
 
-      const { txSkeleton: aliceSignedTxSkeleton } = await signAndOrSendTransaction({
-        account: ALICE,
-        txSkeleton,
-        config,
-        send: false,
-      });
       const { hash } = await signAndOrSendTransaction({
-        account: BOB,
-        txSkeleton: aliceSignedTxSkeleton,
+        account: [ALICE, BOB],
+        txSkeleton,
         config,
         rpc,
         send: true,
