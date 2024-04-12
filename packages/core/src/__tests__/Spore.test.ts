@@ -1,4 +1,4 @@
-import { describe, expect, it, afterAll } from 'vitest';
+import { describe, expect, it, afterAll, assert } from 'vitest';
 import { BI, Cell, Indexer } from '@ckb-lumos/lumos';
 import { getSporeScript } from '../config';
 import { bufferToRawString, bytifyRawString, getCellByLock } from '../helpers';
@@ -389,6 +389,12 @@ describe('Spore', () => {
         outPoint: sporeCell.outPoint!,
         changeAddress: ALICE.address,
         config,
+      });
+
+      txSkeleton.get('inputs').forEach((cell) => {
+        if (cell == clusterCell) {
+          assert(false, 'cluster cell should not appear in inputs');
+        }
       });
 
       const { txSkeleton: aliceSignedTxSkeleton } = await signAndOrSendTransaction({
