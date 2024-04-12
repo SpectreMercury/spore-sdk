@@ -34,13 +34,13 @@ export async function referenceCellOrLockProxy(props: {
   const hasTargetLockInInputs = props.inputLocks.some((script) => {
     return isScriptValueEquals(cellLock, script);
   });
-  // const hasTargetLockInOutputs = props.outputLocks.some((script) => {
-  //   return isScriptValueEquals(cellLock, script);
-  // });
+  const hasTargetLockInOutputs = props.outputLocks.some((script) => {
+    return isScriptValueEquals(cellLock, script);
+  });
 
   // Summarize conditions
-  const referencedLockProxy = hasTargetLockInInputs; // && hasTargetLockInOutputs;
-  const referencedCell = !hasTargetLockInInputs; // || !hasTargetLockInOutputs;
+  const referencedLockProxy = hasTargetLockInInputs && hasTargetLockInOutputs;
+  const referencedCell = !hasTargetLockInInputs || !hasTargetLockInOutputs;
 
   // Inject the target cell's LockProxy to the transaction
   if (referencedLockProxy) {

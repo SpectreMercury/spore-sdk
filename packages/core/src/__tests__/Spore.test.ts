@@ -46,7 +46,7 @@ describe('Spore', () => {
         },
         toLock: CHARLIE.lock,
         fromInfos: [],
-        fromCells: [capacityCell!],
+        extraInputCells: [capacityCell!],
         config,
       });
 
@@ -385,7 +385,8 @@ describe('Spore', () => {
         },
         toLock: ALICE.lock,
         fromInfos: [ALICE.address],
-        fromCells: [clusterOwnerCell!],
+        extraInputCells: [clusterOwnerCell!],
+        extraOutputCells: [clusterOwnerCell!],
         outPoint: sporeCell.outPoint!,
         changeAddress: ALICE.address,
         config,

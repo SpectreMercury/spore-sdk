@@ -13,7 +13,8 @@ export async function createSpore(props: {
   data: SporeDataProps;
   toLock: Script;
   fromInfos: FromInfo[];
-  fromCells?: Cell[];
+  extraInputCells?: Cell[];
+  extraOutputCells?: Cell[];
   changeAddress?: Address;
   updateOutput?: (cell: Cell) => Cell;
   capacityMargin?: BIish | ((cell: Cell, margin: BI) => BIish);
@@ -51,9 +52,9 @@ export async function createSpore(props: {
   });
 
   // Insert input cells in advance for particular purpose
-  if (props.fromCells) {
+  if (props.extraInputCells) {
     txSkeleton.update('inputs', (inputs) => {
-      for (const cell of props.fromCells!) {
+      for (const cell of props.extraInputCells!) {
         const address = encodeToAddress(cell.cellOutput.lock, { config: config.lumos });
         const customScript = {
           script: cell.cellOutput.lock,
@@ -65,6 +66,14 @@ export async function createSpore(props: {
         inputs.push(cell);
       }
       return inputs;
+    });
+  }
+
+  // Insert output cells in advance for particular purpose
+  if (props.extraOutputCells) {
+    txSkeleton.update('outputs', (outputs) => {
+      props.extraOutputCells!.forEach((cell) => outputs.push(cell));
+      return outputs;
     });
   }
 
@@ -80,6 +89,7 @@ export async function createSpore(props: {
     data: props.data,
     toLock: props.toLock,
     fromInfos: props.fromInfos,
+    extraOutputLocks: props.extraOutputCells?.map((cell) => cell.cellOutput.lock),
     changeAddress: props.changeAddress,
     updateOutput: props.updateOutput,
     clusterAgent: props.clusterAgent,
