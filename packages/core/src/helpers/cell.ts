@@ -7,15 +7,16 @@ import { CKBComponents } from '@ckb-lumos/rpc/lib/types/api';
 import { ScriptId } from '../codec';
 import { isScriptValueEquals } from './script';
 
-export async function getCellByLock(props: { lock: Script; indexer: Indexer }) {
+export async function getCellByLock(props: { lock: Script; indexer: Indexer; has_type: boolean }) {
   const collector = props.indexer.collector({
     lock: props.lock,
   });
 
   for await (const cell of collector.collect()) {
-    return cell;
+    if (props.has_type && cell.cellOutput.type) {
+      return cell;
+    } else if (!props.has_type && !cell.cellOutput.type) return cell;
   }
-
   return void 0;
 }
 

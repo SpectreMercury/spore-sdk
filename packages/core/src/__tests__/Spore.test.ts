@@ -26,6 +26,7 @@ describe('Spore', () => {
     const cell = getCellByLock({
       lock: account.lock,
       indexer,
+      has_type: false,
     });
     if (!nullable && !cell) {
       throw new Error(`live cell not found in ${account}`);
