@@ -5,7 +5,7 @@ import { SporeDataProps, injectNewSporeOutput, injectNewSporeIds, getClusterAgen
 import { getSporeByOutPoint, injectLiveSporeCell } from '../..';
 import { getSporeConfig, getSporeScript, SporeConfig } from '../../../config';
 import { generateCreateSporeAction, generateMeltSporeAction, injectCommonCobuildProof } from '../../../cobuild';
-import { assertTransactionSkeletonSize, injectCapacityAndPayFee } from '../../../helpers';
+import { assertTransactionSkeletonSize, injectCapacityAndPayFee, setupCell } from '../../../helpers';
 import { encodeToAddress } from '@ckb-lumos/lumos/helpers';
 
 export async function meltThenCreateSpore(props: {
@@ -18,8 +18,8 @@ export async function meltThenCreateSpore(props: {
   data: SporeDataProps;
   toLock: Script;
   fromInfos: FromInfo[];
-  extraInputCells?: Cell[];
-  extraOutputCells?: Cell[];
+  prefixInputs?: Cell[];
+  prefixOutputs?: Cell[];
   feeRate?: BIish | undefined;
   updateOutput?: (cell: Cell) => Cell;
   capacityMargin?: BIish | ((cell: Cell, margin: BI) => BIish);
@@ -61,27 +61,45 @@ export async function meltThenCreateSpore(props: {
   });
 
   // Insert input cells in advance for particular purpose
-  if (props.extraInputCells) {
-    txSkeleton = txSkeleton.update('inputs', (inputs) => {
-      for (const cell of props.extraInputCells!) {
-        const address = encodeToAddress(cell.cellOutput.lock, { config: config.lumos });
-        const customScript = {
-          script: cell.cellOutput.lock,
-          customData: cell.data,
-        };
-        if (props.fromInfos.indexOf(address) < 0 && props.fromInfos.indexOf(customScript) < 0) {
-          props.fromInfos.push(address);
-        }
-        inputs = inputs.push(cell);
+  if (props.prefixInputs) {
+    for (const cell of props.prefixInputs!) {
+      const address = encodeToAddress(cell.cellOutput.lock, { config: config.lumos });
+      const customScript = {
+        script: cell.cellOutput.lock,
+        customData: cell.data,
+      };
+      if (props.fromInfos.indexOf(address) < 0 && props.fromInfos.indexOf(customScript) < 0) {
+        props.fromInfos.push(address);
       }
-      return inputs;
-    });
+      const setupCellResult = await setupCell({
+        txSkeleton,
+        input: cell,
+        updateWitness: props.updateWitness,
+        defaultWitness: props.defaultWitness,
+        config: config.lumos,
+      });
+      txSkeleton = setupCellResult.txSkeleton;
+    }
+    // txSkeleton = txSkeleton.update('inputs', (inputs) => {
+    //   for (const cell of props.prefixInputs!) {
+    //     const address = encodeToAddress(cell.cellOutput.lock, { config: config.lumos });
+    //     const customScript = {
+    //       script: cell.cellOutput.lock,
+    //       customData: cell.data,
+    //     };
+    //     if (props.fromInfos.indexOf(address) < 0 && props.fromInfos.indexOf(customScript) < 0) {
+    //       props.fromInfos.push(address);
+    //     }
+    //     inputs = inputs.push(cell);
+    //   }
+    //   return inputs;
+    // });
   }
 
   // Insert output cells in advance for particular purpose
-  if (props.extraOutputCells) {
+  if (props.prefixOutputs) {
     txSkeleton = txSkeleton.update('outputs', (outputs) => {
-      props.extraOutputCells!.forEach((cell) => (outputs = outputs.push(cell)));
+      props.prefixOutputs!.forEach((cell) => (outputs = outputs.push(cell)));
       return outputs;
     });
   }
@@ -113,7 +131,7 @@ export async function meltThenCreateSpore(props: {
     data: props.data,
     toLock: props.toLock,
     fromInfos: props.fromInfos,
-    extraOutputLocks: props.extraOutputCells?.map((cell) => cell.cellOutput.lock),
+    extraOutputLocks: props.prefixOutputs?.map((cell) => cell.cellOutput.lock),
     changeAddress: props.changeAddress,
     updateOutput: props.updateOutput,
     clusterAgent: props.clusterAgent,

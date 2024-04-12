@@ -1,5 +1,5 @@
 import { describe, expect, it, afterAll } from 'vitest';
-import { BI, Cell, Indexer } from '@ckb-lumos/lumos';
+import { BI, Cell, Indexer, commons, hd, helpers } from '@ckb-lumos/lumos';
 import { getSporeScript } from '../config';
 import { bufferToRawString, bytifyRawString, getCellByLock } from '../helpers';
 import {
@@ -375,13 +375,15 @@ describe('Spore', () => {
       expect(existingSporeRecord).toBeDefined();
       const sporeRecord = existingSporeRecord!;
       const sporeCell = await retryQuery(() => getSporeByOutPoint(sporeRecord.outPoint, config));
+      const sporeOwner = sporeRecord.account;
 
       expect(existingClusterRecord).toBeDefined();
       const clusterRecord = existingClusterRecord!;
       const clusterCell = await retryQuery(() => getClusterByOutPoint(clusterRecord.outPoint, config));
       const clusterId = clusterCell.cellOutput.type!.args;
+      const clsuterOwner = clusterRecord.account;
 
-      const clusterOwnerCell = await retryQuery(() => getLiveCell(BOB, false));
+      const clusterOwnerCell = await retryQuery(() => getLiveCell(clsuterOwner, false));
       expect(clusterOwnerCell).toBeDefined();
       const { txSkeleton, outputIndex } = await meltThenCreateSpore({
         data: {
@@ -389,12 +391,12 @@ describe('Spore', () => {
           content: bytifyRawString('dob spore'),
           clusterId,
         },
-        toLock: ALICE.lock,
-        fromInfos: [ALICE.address],
-        extraInputCells: [clusterOwnerCell!],
-        extraOutputCells: [clusterOwnerCell!],
+        toLock: sporeOwner.lock,
+        fromInfos: [sporeOwner.address],
+        prefixInputs: [clusterOwnerCell!],
+        prefixOutputs: [clusterOwnerCell!],
         outPoint: sporeCell.outPoint!,
-        changeAddress: ALICE.address,
+        changeAddress: sporeOwner.address,
         config,
         feeRate: 3000,
       });
@@ -404,12 +406,20 @@ describe('Spore', () => {
       });
 
       const { hash } = await signAndOrSendTransaction({
-        account: [ALICE, BOB],
+        account: [sporeOwner, clsuterOwner],
         txSkeleton,
         config,
         rpc,
         send: true,
       });
+
+      // const _txSkeleton = commons.common.prepareSigningEntries(txSkeleton, { config: config.lumos });
+      // const accounts = [existingClusterRecord!.account, existingSporeRecord!.account, existingSporeRecord!.account];
+      // const signatures = _txSkeleton.get('signingEntries').map(({ message }, index) => {
+      //   return accounts[index].signMessage(message);
+      // });
+      // const tx = helpers.sealTransaction(_txSkeleton, signatures.toJSON());
+      // const hash = await rpc.sendTransaction(tx, 'passthrough');
 
       if (hash) {
         SPORE_OUTPOINT_RECORDS.push({
@@ -417,7 +427,7 @@ describe('Spore', () => {
             txHash: hash,
             index: BI.from(outputIndex).toHexString(),
           },
-          account: ALICE,
+          account: sporeRecord.account,
         });
       }
     }, 90000);
