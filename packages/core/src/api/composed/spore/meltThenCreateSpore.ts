@@ -85,8 +85,6 @@ export async function meltThenCreateSpore(props: {
     });
   }
 
-  console.log('extra txSkeleton: ', txSkeleton);
-
   // Inject live spore to Transaction.inputs
   const meltSporeCell = await getSporeByOutPoint(props.outPoint, config);
   const injectLiveSporeCellResult = await injectLiveSporeCell({
@@ -98,8 +96,6 @@ export async function meltThenCreateSpore(props: {
     config,
   });
   txSkeleton = injectLiveSporeCellResult.txSkeleton;
-
-  console.log('melt txSkeleton: ', txSkeleton);
 
   /**
    * Create Spore
@@ -127,8 +123,6 @@ export async function meltThenCreateSpore(props: {
     config,
   });
   txSkeleton = injectNewSporeResult.txSkeleton;
-
-  console.log('mint txSkeleton: ', txSkeleton);
 
   /**
    * Inject Capacity and Pay fee

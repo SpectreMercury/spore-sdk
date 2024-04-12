@@ -21,12 +21,16 @@ describe('Spore', () => {
   const { rpc, config } = TEST_ENV;
   const { CHARLIE, ALICE, BOB } = TEST_ACCOUNTS;
 
-  async function getLiveCell(account: Account): Promise<Cell | undefined> {
+  async function getLiveCell(account: Account, nullable: boolean): Promise<Cell | undefined> {
     const indexer = new Indexer(config.ckbIndexerUrl);
-    return getCellByLock({
+    const cell = getCellByLock({
       lock: account.lock,
       indexer,
     });
+    if (!nullable && !cell) {
+      throw new Error(`live cell not found in ${account}`);
+    }
+    return cell;
   }
 
   afterAll(async () => {
@@ -38,7 +42,7 @@ describe('Spore', () => {
   describe('Spore basics', () => {
     let existingSporeRecord: OutPointRecord | undefined;
     it('Create a Spore', async () => {
-      const capacityCell = await getLiveCell(CHARLIE);
+      const capacityCell = await getLiveCell(CHARLIE, true);
       const { txSkeleton, outputIndex, reference } = await createSpore({
         data: {
           contentType: 'text/plain',
@@ -376,7 +380,7 @@ describe('Spore', () => {
       const clusterCell = await retryQuery(() => getClusterByOutPoint(clusterRecord.outPoint, config));
       const clusterId = clusterCell.cellOutput.type!.args;
 
-      const clusterOwnerCell = await getLiveCell(BOB);
+      const clusterOwnerCell = await retryQuery(() => getLiveCell(BOB, false));
       expect(clusterOwnerCell).toBeDefined();
       const { txSkeleton, outputIndex } = await meltThenCreateSpore({
         data: {

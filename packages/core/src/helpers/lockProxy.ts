@@ -41,6 +41,7 @@ export async function referenceCellOrLockProxy(props: {
   // Summarize conditions
   const referencedLockProxy = hasTargetLockInInputs && hasTargetLockInOutputs;
   const referencedCell = !hasTargetLockInInputs || !hasTargetLockInOutputs;
+  console.log('referencedLockProxy = ', referencedLockProxy);
 
   // Inject the target cell's LockProxy to the transaction
   if (referencedLockProxy) {
