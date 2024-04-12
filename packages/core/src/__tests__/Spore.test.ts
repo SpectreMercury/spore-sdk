@@ -11,7 +11,7 @@ import {
   getClusterByOutPoint,
   createMultipleSpores,
 } from '../api';
-import { expectCellDep, expectTypeId, expectTypeCell, expectCellLock, Account } from './helpers';
+import { expectCellDep, expectTypeId, expectTypeCell, expectCellLock, Account, expectCell } from './helpers';
 import { getSporeOutput, popRecord, retryQuery, signAndOrSendTransaction, OutPointRecord } from './helpers';
 import { TEST_ACCOUNTS, TEST_ENV, SPORE_OUTPOINT_RECORDS, cleanupRecords } from './shared';
 import { meltThenCreateSpore } from '../api/composed/spore/meltThenCreateSpore';
@@ -377,6 +377,7 @@ describe('Spore', () => {
       const clusterId = clusterCell.cellOutput.type!.args;
 
       const clusterOwnerCell = await getLiveCell(BOB);
+      expect(clusterOwnerCell).toBeDefined();
       const { txSkeleton, outputIndex } = await meltThenCreateSpore({
         data: {
           contentType: 'text/plain',
