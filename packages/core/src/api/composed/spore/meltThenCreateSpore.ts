@@ -61,7 +61,7 @@ export async function meltThenCreateSpore(props: {
 
   // Insert input cells in advance for particular purpose
   if (props.extraInputCells) {
-    txSkeleton.update('inputs', (inputs) => {
+    txSkeleton = txSkeleton.update('inputs', (inputs) => {
       for (const cell of props.extraInputCells!) {
         const address = encodeToAddress(cell.cellOutput.lock, { config: config.lumos });
         const customScript = {
@@ -76,14 +76,16 @@ export async function meltThenCreateSpore(props: {
       return inputs;
     });
   }
+  console.log('txSkeleton.inputs = ', txSkeleton.get('inputs'));
 
   // Insert output cells in advance for particular purpose
   if (props.extraOutputCells) {
-    txSkeleton.update('outputs', (outputs) => {
+    txSkeleton = txSkeleton.update('outputs', (outputs) => {
       props.extraOutputCells!.forEach((cell) => (outputs = outputs.push(cell)));
       return outputs;
     });
   }
+  console.log('txSkeleton.outputs = ', txSkeleton.get('outputs'));
 
   // Inject live spore to Transaction.inputs
   const meltSporeCell = await getSporeByOutPoint(props.outPoint, config);
