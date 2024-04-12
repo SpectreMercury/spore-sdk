@@ -8,9 +8,6 @@ importers:
 
   .:
     dependencies:
-      '@exact-realty/multipart-parser':
-        specifier: ^1.0.13
-        version: 1.0.13
       rimraf:
         specifier: ^5.0.0
         version: 5.0.0
@@ -90,6 +87,9 @@ importers:
         specifier: ^4.17.21
         version: 4.17.21
     devDependencies:
+      '@exact-realty/multipart-parser':
+        specifier: ^1.0.13
+        version: 1.0.13
       vitest:
         specifier: ^1.4.0
         version: 1.4.0(@types/node@20.4.1)
@@ -693,7 +693,7 @@ packages:
   /@exact-realty/multipart-parser@1.0.13:
     resolution: {integrity: sha512-BGnB0VVn18dkz85rvBmp/CyxAMvUcVrsNf3qw8Fdx80V6+MsQUTxRdQnC0PzLIxbN8PKGFs8afd+ur8V1JLv8g==}
     engines: {node: '>=16.0.0', npm: '>=8.0.0'}
-    dev: false
+    dev: true
 
   /@isaacs/cliui@8.0.2:
     resolution: {integrity: sha512-O8jcjabXaleOG9DQ0+ARXWZBTfnP4WNAqzuiJK7ll44AmxGKv/J2M4TPjxjY3znBCfvBXFzucm1twdyFybFqEA==}
