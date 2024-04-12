@@ -303,13 +303,13 @@ describe('Spore', () => {
           name: 'dob cluster',
           description: 'Testing only',
         },
-        fromInfos: [CHARLIE.address],
-        toLock: CHARLIE.lock,
+        fromInfos: [BOB.address],
+        toLock: BOB.lock,
         config,
       });
 
       const { hash } = await signAndOrSendTransaction({
-        account: CHARLIE,
+        account: BOB,
         txSkeleton,
         config,
         rpc,
@@ -322,7 +322,7 @@ describe('Spore', () => {
             txHash: hash,
             index: BI.from(outputIndex).toHexString(),
           },
-          account: CHARLIE,
+          account: BOB,
         };
       }
     }, 60000);
@@ -376,18 +376,18 @@ describe('Spore', () => {
       const clusterCell = await retryQuery(() => getClusterByOutPoint(clusterRecord.outPoint, config));
       const clusterId = clusterCell.cellOutput.type!.args;
 
-      const capacityCell = await getLiveCell(CHARLIE);
+      const clusterOwnerCell = await getLiveCell(BOB);
       const { txSkeleton, outputIndex } = await meltThenCreateSpore({
         data: {
           contentType: 'text/plain',
           content: bytifyRawString('dob spore'),
           clusterId,
         },
-        toLock: CHARLIE.lock,
-        fromInfos: [],
-        fromCells: [capacityCell!],
+        toLock: ALICE.lock,
+        fromInfos: [ALICE.address],
+        fromCells: [clusterOwnerCell!],
         outPoint: sporeCell.outPoint!,
-        changeAddress: CHARLIE.address,
+        changeAddress: ALICE.address,
         config,
       });
 
@@ -398,7 +398,7 @@ describe('Spore', () => {
         send: false,
       });
       const { hash } = await signAndOrSendTransaction({
-        account: CHARLIE,
+        account: BOB,
         txSkeleton: aliceSignedTxSkeleton,
         config,
         rpc,
@@ -411,7 +411,7 @@ describe('Spore', () => {
             txHash: hash,
             index: BI.from(outputIndex).toHexString(),
           },
-          account: CHARLIE,
+          account: ALICE,
         });
       }
     }, 90000);
