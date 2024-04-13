@@ -1,5 +1,5 @@
 import { describe, expect, it, afterAll } from 'vitest';
-import { BI, Cell, Indexer } from '@ckb-lumos/lumos';
+import { BI, Cell, Indexer, helpers } from '@ckb-lumos/lumos';
 import { getSporeScript } from '../config';
 import { bufferToRawString, bytifyRawString, getCellByLock } from '../helpers';
 import {
@@ -16,6 +16,7 @@ import { getSporeOutput, popRecord, retryQuery, signAndOrSendTransaction, OutPoi
 import { TEST_ACCOUNTS, TEST_ENV, SPORE_OUTPOINT_RECORDS, cleanupRecords } from './shared';
 import { meltThenCreateSpore } from '../api/composed/spore/meltThenCreateSpore';
 import { SporeAction, WitnessLayout } from '../cobuild';
+import { common } from '@ckb-lumos/lumos/common-scripts';
 
 describe('Spore', () => {
   const { rpc, config } = TEST_ENV;
@@ -405,14 +406,23 @@ describe('Spore', () => {
         expect(cell == clusterCell).toBeFalsy();
       });
 
-      const { hash } = await signAndOrSendTransaction({
-        account: [sporeOwner, clsuterOwner],
-        txSkeleton,
-        config,
-        rpc,
-        send: true,
-      });
+      // const { hash } = await signAndOrSendTransaction({
+      //   account: [sporeOwner, clsuterOwner],
+      //   txSkeleton,
+      //   config,
+      //   rpc,
+      //   send: true,
+      // });
 
+      // use another proper method to interactively sign message
+      let signedTxSkeleton = common.prepareSigningEntries(txSkeleton, { config: config.lumos });
+      // sign from client (seralize and send the result skeleton to the backend server)
+      signedTxSkeleton = sporeOwner.signTransaction(signedTxSkeleton);
+      // sign from server
+      signedTxSkeleton = clsuterOwner.signTransaction(signedTxSkeleton);
+      // send message
+      const tx = helpers.createTransactionFromSkeleton(signedTxSkeleton);
+      const hash = await rpc.sendTransaction(tx, 'passthrough');
       if (hash) {
         SPORE_OUTPOINT_RECORDS.push({
           outPoint: {

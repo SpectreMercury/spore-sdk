@@ -15,7 +15,7 @@ import { unpackToRawMutantArgs } from '../codec';
 
 describe('Mutant', function () {
   const { rpc, config } = TEST_ENV;
-  const { CHARLIE, ALICE } = TEST_ACCOUNTS;
+  const { CHARLIE, ALICE, BOB } = TEST_ACCOUNTS;
   let existingMutantRecord: OutPointRecord | undefined;
   let existingClusterRecord: OutPointRecord | undefined;
 
@@ -111,7 +111,7 @@ describe('Mutant', function () {
   }, 60000);
 
   describe('Spore with Mutant', () => {
-    it.skip('Create a Spore with Mutant', async () => {
+    it('Create a Spore with Mutant', async () => {
       expect(existingMutantRecord).toBeDefined();
       const mutantRecord = existingMutantRecord!;
       const mutantCell = await retryQuery(() => getMutantByOutPoint(mutantRecord!.outPoint, config));
@@ -128,8 +128,8 @@ describe('Mutant', function () {
             mutant: [mutantId],
           },
         },
-        fromInfos: [ALICE.address],
-        toLock: ALICE.lock,
+        fromInfos: [BOB.address],
+        toLock: BOB.lock,
         config,
       });
 
@@ -152,7 +152,7 @@ describe('Mutant', function () {
       }
 
       const { hash } = await signAndOrSendTransaction({
-        account: ALICE,
+        account: BOB,
         txSkeleton,
         config,
         rpc,
@@ -164,7 +164,7 @@ describe('Mutant', function () {
             txHash: hash,
             index: BI.from(outputIndex).toHexString(),
           },
-          account: ALICE,
+          account: BOB,
         });
       }
     }, 60000);
