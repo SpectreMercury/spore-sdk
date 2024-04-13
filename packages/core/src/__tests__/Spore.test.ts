@@ -1,5 +1,5 @@
 import { describe, expect, it, afterAll } from 'vitest';
-import { BI, Cell, Indexer } from '@ckb-lumos/lumos';
+import { BI, Cell, Indexer, helpers } from '@ckb-lumos/lumos';
 import { getSporeScript } from '../config';
 import { bufferToRawString, bytifyRawString, getCellByLock } from '../helpers';
 import {
@@ -11,22 +11,28 @@ import {
   getClusterByOutPoint,
   createMultipleSpores,
 } from '../api';
-import { expectCellDep, expectTypeId, expectTypeCell, expectCellLock, Account } from './helpers';
+import { expectCellDep, expectTypeId, expectTypeCell, expectCellLock, Account, expectCell } from './helpers';
 import { getSporeOutput, popRecord, retryQuery, signAndOrSendTransaction, OutPointRecord } from './helpers';
 import { TEST_ACCOUNTS, TEST_ENV, SPORE_OUTPOINT_RECORDS, cleanupRecords } from './shared';
 import { meltThenCreateSpore } from '../api/composed/spore/meltThenCreateSpore';
 import { SporeAction, WitnessLayout } from '../cobuild';
+import { common } from '@ckb-lumos/lumos/common-scripts';
 
 describe('Spore', () => {
   const { rpc, config } = TEST_ENV;
   const { CHARLIE, ALICE, BOB } = TEST_ACCOUNTS;
 
-  async function getLiveCell(account: Account): Promise<Cell | undefined> {
+  async function getLiveCell(account: Account, nullable: boolean): Promise<Cell | undefined> {
     const indexer = new Indexer(config.ckbIndexerUrl);
-    return getCellByLock({
+    const cell = getCellByLock({
       lock: account.lock,
       indexer,
+      has_type: false,
     });
+    if (!nullable && !cell) {
+      throw new Error(`live cell not found in ${account}`);
+    }
+    return cell;
   }
 
   afterAll(async () => {
@@ -38,7 +44,7 @@ describe('Spore', () => {
   describe('Spore basics', () => {
     let existingSporeRecord: OutPointRecord | undefined;
     it('Create a Spore', async () => {
-      const capacityCell = await getLiveCell(CHARLIE);
+      const capacityCell = await getLiveCell(CHARLIE, true);
       const { txSkeleton, outputIndex, reference } = await createSpore({
         data: {
           contentType: 'text/plain',
@@ -46,7 +52,7 @@ describe('Spore', () => {
         },
         toLock: CHARLIE.lock,
         fromInfos: [],
-        fromCells: [capacityCell!],
+        prefixInputs: [capacityCell!],
         config,
       });
 
@@ -303,13 +309,13 @@ describe('Spore', () => {
           name: 'dob cluster',
           description: 'Testing only',
         },
-        fromInfos: [CHARLIE.address],
-        toLock: CHARLIE.lock,
+        fromInfos: [BOB.address],
+        toLock: BOB.lock,
         config,
       });
 
       const { hash } = await signAndOrSendTransaction({
-        account: CHARLIE,
+        account: BOB,
         txSkeleton,
         config,
         rpc,
@@ -322,7 +328,7 @@ describe('Spore', () => {
             txHash: hash,
             index: BI.from(outputIndex).toHexString(),
           },
-          account: CHARLIE,
+          account: BOB,
         };
       }
     }, 60000);
@@ -370,48 +376,60 @@ describe('Spore', () => {
       expect(existingSporeRecord).toBeDefined();
       const sporeRecord = existingSporeRecord!;
       const sporeCell = await retryQuery(() => getSporeByOutPoint(sporeRecord.outPoint, config));
+      const sporeOwner = sporeRecord.account;
 
       expect(existingClusterRecord).toBeDefined();
       const clusterRecord = existingClusterRecord!;
       const clusterCell = await retryQuery(() => getClusterByOutPoint(clusterRecord.outPoint, config));
       const clusterId = clusterCell.cellOutput.type!.args;
+      const clsuterOwner = clusterRecord.account;
 
-      const capacityCell = await getLiveCell(CHARLIE);
+      const clusterOwnerCell = await retryQuery(() => getLiveCell(clsuterOwner, false));
+      expect(clusterOwnerCell).toBeDefined();
       const { txSkeleton, outputIndex } = await meltThenCreateSpore({
         data: {
           contentType: 'text/plain',
           content: bytifyRawString('dob spore'),
           clusterId,
         },
-        toLock: CHARLIE.lock,
-        fromInfos: [],
-        fromCells: [capacityCell!],
+        toLock: sporeOwner.lock,
+        fromInfos: [sporeOwner.address],
+        prefixInputs: [clusterOwnerCell!],
+        prefixOutputs: [clusterOwnerCell!],
         outPoint: sporeCell.outPoint!,
-        changeAddress: CHARLIE.address,
+        changeAddress: sporeOwner.address,
         config,
+        feeRate: 3000,
       });
 
-      const { txSkeleton: aliceSignedTxSkeleton } = await signAndOrSendTransaction({
-        account: ALICE,
-        txSkeleton,
-        config,
-        send: false,
-      });
-      const { hash } = await signAndOrSendTransaction({
-        account: CHARLIE,
-        txSkeleton: aliceSignedTxSkeleton,
-        config,
-        rpc,
-        send: true,
+      txSkeleton.get('inputs').forEach((cell) => {
+        expect(cell == clusterCell).toBeFalsy();
       });
 
+      // const { hash } = await signAndOrSendTransaction({
+      //   account: [sporeOwner, clsuterOwner],
+      //   txSkeleton,
+      //   config,
+      //   rpc,
+      //   send: true,
+      // });
+
+      // use another proper method to interactively sign message
+      let signedTxSkeleton = common.prepareSigningEntries(txSkeleton, { config: config.lumos });
+      // sign from client (seralize and send the result skeleton to the backend server)
+      signedTxSkeleton = sporeOwner.signTransaction(signedTxSkeleton);
+      // sign from server
+      signedTxSkeleton = clsuterOwner.signTransaction(signedTxSkeleton);
+      // send message
+      const tx = helpers.createTransactionFromSkeleton(signedTxSkeleton);
+      const hash = await rpc.sendTransaction(tx, 'passthrough');
       if (hash) {
         SPORE_OUTPOINT_RECORDS.push({
           outPoint: {
             txHash: hash,
             index: BI.from(outputIndex).toHexString(),
           },
-          account: CHARLIE,
+          account: sporeRecord.account,
         });
       }
     }, 90000);

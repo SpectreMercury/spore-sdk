@@ -27,6 +27,7 @@ export async function injectNewSporeOutput(props: {
   data: SporeDataProps;
   toLock: Script;
   fromInfos: FromInfo[];
+  extraOutputLocks?: Script[];
   changeAddress?: Address;
   updateOutput?: (cell: Cell) => Cell;
   capacityMargin?: BIish | ((cell: Cell, margin: BI) => BIish);
@@ -95,7 +96,7 @@ export async function injectNewSporeOutput(props: {
         config: config.lumos,
       }),
       outputLocks: composeOutputLocks({
-        outputLocks: [props.toLock],
+        outputLocks: props.extraOutputLocks ? props.extraOutputLocks!.concat([props.toLock]) : [props.toLock],
         fromInfos: props.fromInfos,
         changeAddress: props.changeAddress,
         config: config.lumos,
