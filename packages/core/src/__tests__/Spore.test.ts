@@ -1,5 +1,6 @@
 import { describe, expect, it, afterAll } from 'vitest';
 import { BI, Cell, Indexer, helpers } from '@ckb-lumos/lumos';
+import { ParamsFormatter } from '@ckb-lumos/rpc';
 import { getSporeScript } from '../config';
 import { bufferToRawString, bytifyRawString, getCellByLock } from '../helpers';
 import {
@@ -422,8 +423,10 @@ describe('Spore', () => {
       signedTxSkeleton = clsuterOwner.signTransaction(signedTxSkeleton);
       // send message
       const tx = helpers.createTransactionFromSkeleton(signedTxSkeleton);
+      console.log('RPC Transaction:', JSON.stringify(ParamsFormatter.toRawTransaction(tx), null, 2));
       const hash = await rpc.sendTransaction(tx, 'passthrough');
       if (hash) {
+        console.log('TransactionHash:', hash);
         SPORE_OUTPOINT_RECORDS.push({
           outPoint: {
             txHash: hash,

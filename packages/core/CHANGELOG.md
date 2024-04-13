@@ -1,5 +1,11 @@
 # @spore-sdk/core
 
+## 0.2.0-beta.6
+
+### Patch Changes
+
+- 31ce36c: fix a bug for Cluster's `lockProxy` mode identification
+
 ## 0.2.0-beta.5
 
 ### Patch Changes
