@@ -17,6 +17,7 @@ export async function createCluster(props: {
   updateOutput?: (cell: Cell) => Cell;
   capacityMargin?: BIish | ((cell: Cell, margin: BI) => BIish);
   maxTransactionSize?: number | false;
+  feeRate?: BIish | undefined;
   config?: SporeConfig;
 }): Promise<{
   txSkeleton: helpers.TransactionSkeletonType;
@@ -49,6 +50,7 @@ export async function createCluster(props: {
     txSkeleton,
     fromInfos: props.fromInfos,
     changeAddress: props.changeAddress,
+    feeRate: props.feeRate,
     updateTxSkeletonAfterCollection(_txSkeleton) {
       // Generate ID for the new Cluster (if possible)
       _txSkeleton = injectNewClusterIds({

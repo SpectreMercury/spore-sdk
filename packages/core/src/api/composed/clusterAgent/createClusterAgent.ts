@@ -22,6 +22,7 @@ export async function createClusterAgent(props: {
     capacityMargin?: BIish | ((cell: Cell, margin: BI) => BIish);
     updateWitness?: HexString | ((witness: HexString) => HexString);
   };
+  feeRate?: BIish | undefined;
   config?: SporeConfig;
 }): Promise<{
   txSkeleton: helpers.TransactionSkeletonType;
@@ -63,6 +64,7 @@ export async function createClusterAgent(props: {
     txSkeleton,
     fromInfos: props.fromInfos,
     changeAddress: props.changeAddress,
+    feeRate: props.feeRate,
     updateTxSkeletonAfterCollection(_txSkeleton) {
       // Inject CobuildProof
       const clusterAgentCell = txSkeleton.get('outputs').get(injectNewClusterAgentOutputResult.outputIndex)!;
