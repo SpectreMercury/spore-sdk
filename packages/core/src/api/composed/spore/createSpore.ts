@@ -35,6 +35,7 @@ export async function createSpore(props: {
     paymentAmount?: (minPayment: BI, lock: Script, cell: Cell) => BIish;
   };
   maxTransactionSize?: number | false;
+  feeRate?: BIish | undefined;
   config?: SporeConfig;
 }): Promise<{
   txSkeleton: helpers.TransactionSkeletonType;
@@ -112,6 +113,7 @@ export async function createSpore(props: {
     txSkeleton,
     fromInfos: props.fromInfos,
     changeAddress: props.changeAddress,
+    feeRate: props.feeRate,
     updateTxSkeletonAfterCollection(_txSkeleton) {
       // Generate and inject SporeID
       _txSkeleton = injectNewSporeIds({

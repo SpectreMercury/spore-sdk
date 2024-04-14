@@ -19,6 +19,7 @@ export async function transferClusterProxy(props: {
   updateWitness?: HexString | ((witness: HexString) => HexString);
   defaultWitness?: HexString;
   since?: PackedSince;
+  feeRate?: BIish | undefined;
   config?: SporeConfig;
 }): Promise<{
   txSkeleton: helpers.TransactionSkeletonType;
@@ -80,6 +81,7 @@ export async function transferClusterProxy(props: {
       txSkeleton,
       fromInfos: props.fromInfos!,
       changeAddress: props.changeAddress,
+      feeRate: props.feeRate,
       updateTxSkeletonAfterCollection(_txSkeleton) {
         // Inject CobuildProof
         if (clusterProxyScript.behaviors?.cobuild) {

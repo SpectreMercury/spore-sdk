@@ -18,6 +18,7 @@ export async function transferMutant(props: {
   updateWitness?: HexString | ((witness: HexString) => HexString);
   defaultWitness?: HexString;
   since?: PackedSince;
+  feeRate?: BIish | undefined;
   config?: SporeConfig;
 }): Promise<{
   txSkeleton: helpers.TransactionSkeletonType;
@@ -72,6 +73,7 @@ export async function transferMutant(props: {
       txSkeleton,
       changeAddress: props.changeAddress,
       fromInfos: props.fromInfos!,
+      feeRate: props.feeRate,
       config,
     });
     txSkeleton = injectCapacityAndPayFeeResult.txSkeleton;
