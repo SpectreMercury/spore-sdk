@@ -1,5 +1,11 @@
 # @spore-sdk/core
 
+## 0.2.0-beta.7
+
+### Patch Changes
+
+- a34515c: add `feerate` parameter to all of interfaces
+
 ## 0.2.0-beta.6
 
 ### Patch Changes
