@@ -5,7 +5,12 @@ import { SporeDataProps, injectNewSporeOutput, injectNewSporeIds, getClusterAgen
 import { getSporeByOutPoint, injectLiveSporeCell } from '../..';
 import { getSporeConfig, getSporeScript, SporeConfig } from '../../../config';
 import { generateCreateSporeAction, generateMeltSporeAction, injectCommonCobuildProof } from '../../../cobuild';
-import { assertTransactionSkeletonSize, injectCapacityAndPayFee, setupCell } from '../../../helpers';
+import {
+  assertTransactionSkeletonSize,
+  createCapacitySnapshotFromTransactionSkeleton,
+  injectCapacityAndPayFee,
+  setupCell,
+} from '../../../helpers';
 import { encodeToAddress } from '@ckb-lumos/lumos/helpers';
 
 export async function meltThenCreateSpore(props: {
@@ -133,6 +138,8 @@ export async function meltThenCreateSpore(props: {
    * Inject Capacity and Pay fee
    */
 
+  console.log('before injection', JSON.stringify(txSkeleton));
+
   const injectCapacityAndPayFeeResult = await injectCapacityAndPayFee({
     txSkeleton,
     fromInfos: props.fromInfos,
@@ -175,6 +182,8 @@ export async function meltThenCreateSpore(props: {
     },
   });
   txSkeleton = injectCapacityAndPayFeeResult.txSkeleton;
+
+  console.log('after injection', JSON.stringify(txSkeleton));
 
   // Make sure the tx size is in range (if needed)
   if (typeof maxTransactionSize === 'number') {
