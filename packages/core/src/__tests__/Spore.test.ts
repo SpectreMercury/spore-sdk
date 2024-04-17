@@ -2,7 +2,12 @@ import { describe, expect, it, afterAll } from 'vitest';
 import { BI, Cell, Indexer, helpers } from '@ckb-lumos/lumos';
 import { ParamsFormatter } from '@ckb-lumos/rpc';
 import { getSporeScript } from '../config';
-import { bufferToRawString, bytifyRawString, getCellByLock } from '../helpers';
+import {
+  bufferToRawString,
+  bytifyRawString,
+  createCapacitySnapshotFromTransactionSkeleton,
+  getCellByLock,
+} from '../helpers';
 import {
   createSpore,
   transferSpore,
@@ -406,6 +411,8 @@ describe('Spore', () => {
       txSkeleton.get('inputs').forEach((cell) => {
         expect(cell == clusterCell).toBeFalsy();
       });
+      let snapshot = createCapacitySnapshotFromTransactionSkeleton(txSkeleton);
+      expect(snapshot.inputsRemainCapacity).gt(0).lt(100000000);
 
       // const { hash } = await signAndOrSendTransaction({
       //   account: [sporeOwner, clsuterOwner],

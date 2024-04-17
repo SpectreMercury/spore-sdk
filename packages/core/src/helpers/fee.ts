@@ -191,7 +191,9 @@ export async function injectCapacityAndPayFee(props: {
 export async function returnExceededCapacityAndPayFee(props: {
   txSkeleton: helpers.TransactionSkeletonType;
   changeAddress: Address;
+  fromInfos?: FromInfo[];
   config?: SporeConfig;
+  feeRate?: BIish;
 }): Promise<{
   txSkeleton: helpers.TransactionSkeletonType;
   changeCellOutputIndex: number;
@@ -213,12 +215,25 @@ export async function returnExceededCapacityAndPayFee(props: {
     throw new Error(`Cannot pay fee with change cell because no change was returned`);
   }
 
-  // Pay fee by change cell in outputs
-  txSkeleton = await payFeeByOutput({
-    outputIndex: returnExceededCapacityResult.changeCellOutputIndex,
-    txSkeleton,
-    config,
-  });
+  if (returnExceededCapacityResult.payFeeByChangeCell) {
+    // Pay fee by change cell in outputs
+    txSkeleton = await payFeeByOutput({
+      outputIndex: returnExceededCapacityResult.changeCellOutputIndex,
+      txSkeleton,
+      config,
+    });
+  } else {
+    if (props.fromInfos === void 0) {
+      throw new Error('Cannot pay fee through collection because "fromInfos" is not provided');
+    }
+    txSkeleton = await payFeeThroughCollection({
+      txSkeleton,
+      fromInfos: props.fromInfos,
+      changeAddress: props.changeAddress,
+      feeRate: props.feeRate,
+      config,
+    });
+  }
 
   return {
     txSkeleton,

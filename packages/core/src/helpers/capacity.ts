@@ -287,6 +287,7 @@ export function returnExceededCapacity(props: {
   returnedChange: boolean;
   createdChangeCell: boolean;
   changeCellOutputIndex: number;
+  payFeeByChangeCell: boolean | undefined;
 } {
   // Summary inputs/outputs capacity status
   let txSkeleton = props.txSkeleton;
@@ -296,6 +297,7 @@ export function returnExceededCapacity(props: {
   let returnedChange: boolean = false;
   let createdChangeCell: boolean = false;
   let changeCellOutputIndex: number = -1;
+  let payFeeByChangeCell: boolean | undefined = undefined;
 
   // If no exceeded capacity, simply end the process
   if (snapshot.inputsRemainCapacity.lte(0)) {
@@ -304,6 +306,7 @@ export function returnExceededCapacity(props: {
       returnedChange,
       createdChangeCell,
       changeCellOutputIndex,
+      payFeeByChangeCell,
     };
   }
 
@@ -322,7 +325,7 @@ export function returnExceededCapacity(props: {
   const matchLastOutputIndex = txSkeleton
     .get('outputs')
     .filter((_, index) => fixedOutputs.includes(index))
-    .findLastIndex((r) => isScriptValueEquals(r.cellOutput.lock, changeLock));
+    .findLastIndex((r) => isScriptValueEquals(r.cellOutput.lock, changeLock) && r.cellOutput.type === void 0);
 
   if (matchLastOutputIndex > -1) {
     // If an unfixed output exists and its lock is the same as change lock,
@@ -345,6 +348,13 @@ export function returnExceededCapacity(props: {
       },
       data: '0x',
     };
+    const minimalCapacity = helpers.minimalCellCapacityCompatible(changeCell);
+    if (snapshot.inputsRemainCapacity.gt(minimalCapacity)) {
+      payFeeByChangeCell = true;
+    } else {
+      changeCell.cellOutput.capacity = minimalCapacity.toHexString();
+      payFeeByChangeCell = false;
+    }
     txSkeleton = txSkeleton.update('outputs', (outputs) => {
       changeCellOutputIndex = outputs.size;
       return outputs.push(changeCell);
@@ -356,5 +366,6 @@ export function returnExceededCapacity(props: {
     returnedChange,
     createdChangeCell,
     changeCellOutputIndex,
+    payFeeByChangeCell,
   };
 }

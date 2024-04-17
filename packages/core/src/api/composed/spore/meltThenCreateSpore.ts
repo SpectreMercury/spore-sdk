@@ -169,15 +169,6 @@ export async function meltThenCreateSpore(props: {
    */
   const snapshot = createCapacitySnapshotFromTransactionSkeleton(txSkeleton);
   if (snapshot.inputsCapacity > snapshot.outputsCapacity) {
-    console.log(
-      'entering redeem mode, ckb inputs',
-      snapshot.inputsCapacity,
-      'ckb outputs',
-      snapshot.outputsCapacity,
-      'differ',
-      snapshot.inputsRemainCapacity,
-    );
-
     /**
      * Complete Co-Build WitnessLayout
      */
@@ -200,20 +191,13 @@ export async function meltThenCreateSpore(props: {
     const sporeAddress = helpers.encodeToAddress(mintSporeCell.cellOutput.lock, { config: config.lumos });
     const returnExceededCapacityAndPayFeeResult = await returnExceededCapacityAndPayFee({
       changeAddress: props.changeAddress ?? sporeAddress,
+      fromInfos: props.fromInfos,
+      feeRate: props.feeRate,
       txSkeleton,
       config,
     });
     txSkeleton = returnExceededCapacityAndPayFeeResult.txSkeleton;
   } else {
-    console.log(
-      'entering injection mode, ckb inputs',
-      snapshot.inputsCapacity,
-      'ckb outputs',
-      snapshot.outputsCapacity,
-      'differ',
-      snapshot.outputsRemainCapacity,
-    );
-
     /**
      * Inject Capacity and Pay fee
      */
@@ -244,25 +228,6 @@ export async function meltThenCreateSpore(props: {
           _txSkeleton,
           config,
         );
-
-        // const sporeScript = getSporeScript(config, 'Spore', mintSporeCell.cellOutput.type!);
-        // if (sporeScript.behaviors?.cobuild) {
-        //   const meltActionResult = generateMeltSporeAction({
-        //     txSkeleton: _txSkeleton,
-        //     inputIndex: injectLiveSporeCellResult.inputIndex,
-        //   });
-        //   const mintActionResult = generateCreateSporeAction({
-        //     txSkeleton: _txSkeleton,
-        //     reference: injectNewSporeResult.reference,
-        //     outputIndex: injectNewSporeResult.outputIndex,
-        //   });
-        //   const actions = meltActionResult.actions.concat(mintActionResult.actions);
-        //   const injectCobuildProofResult = injectCommonCobuildProof({
-        //     txSkeleton: _txSkeleton,
-        //     actions,
-        //   });
-        //   _txSkeleton = injectCobuildProofResult.txSkeleton;
-        // }
 
         return _txSkeleton;
       },
