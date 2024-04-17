@@ -169,6 +169,15 @@ export async function meltThenCreateSpore(props: {
    */
   const snapshot = createCapacitySnapshotFromTransactionSkeleton(txSkeleton);
   if (snapshot.inputsCapacity > snapshot.outputsCapacity) {
+    console.log(
+      'entering redeem mode, ckb inputs',
+      snapshot.inputsCapacity,
+      'ckb outputs',
+      snapshot.outputsCapacity,
+      'differ',
+      snapshot.inputsRemainCapacity,
+    );
+
     /**
      * Complete Co-Build WitnessLayout
      */
@@ -196,6 +205,15 @@ export async function meltThenCreateSpore(props: {
     });
     txSkeleton = returnExceededCapacityAndPayFeeResult.txSkeleton;
   } else {
+    console.log(
+      'entering injection mode, ckb inputs',
+      snapshot.inputsCapacity,
+      'ckb outputs',
+      snapshot.outputsCapacity,
+      'differ',
+      snapshot.outputsRemainCapacity,
+    );
+
     /**
      * Inject Capacity and Pay fee
      */

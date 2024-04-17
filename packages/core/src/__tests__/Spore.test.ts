@@ -338,7 +338,7 @@ describe('Spore', () => {
       const { txSkeleton, outputIndex, reference } = await createSpore({
         data: {
           contentType: 'text/plain',
-          content: bytifyRawString('blind box spore'),
+          content: bytifyRawString('blind box spore with bigger capacity than opened one'),
         },
         toLock: ALICE.lock,
         fromInfos: [ALICE.address],
@@ -389,8 +389,8 @@ describe('Spore', () => {
       expect(clusterOwnerCell).toBeDefined();
       const { txSkeleton, outputIndex } = await meltThenCreateSpore({
         data: {
-          contentType: 'text/plain',
-          content: bytifyRawString('dob spore'),
+          contentType: 'dob/0',
+          content: bytifyRawString('opened dob spore'),
           clusterId,
         },
         toLock: sporeOwner.lock,
