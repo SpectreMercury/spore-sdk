@@ -220,10 +220,12 @@ export async function returnExceededCapacityAndPayFee(props: {
       throw new Error(`Cannot pay fee with change cell because fromInfos is required`);
     }
     // Pay fee by capacity collection
+    const feeRate = props.feeRate ?? (await getMinFeeRate(config.ckbNodeUrl));
+    const fee = calculateFeeByTransactionSkeleton(txSkeleton, feeRate);
     txSkeleton = await common.injectCapacity(
       txSkeleton,
       props.fromInfos,
-      returnExceededCapacityResult.neededCapacity,
+      returnExceededCapacityResult.neededCapacity.add(fee),
       props.changeAddress,
       void 0,
       {
@@ -236,6 +238,7 @@ export async function returnExceededCapacityAndPayFee(props: {
     txSkeleton = await payFeeByOutput({
       outputIndex: returnExceededCapacityResult.changeCellOutputIndex,
       txSkeleton,
+      feeRate: props.feeRate,
       config,
     });
   }
