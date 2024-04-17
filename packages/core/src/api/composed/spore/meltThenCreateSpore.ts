@@ -55,6 +55,8 @@ export async function meltThenCreateSpore(props: {
   fromInfos: FromInfo[];
   prefixInputs?: Cell[];
   prefixOutputs?: Cell[];
+  postInputs?: Cell[];
+  postOutputs?: Cell[];
   feeRate?: BIish | undefined;
   updateOutput?: (cell: Cell) => Cell;
   capacityMargin?: BIish | ((cell: Cell, margin: BI) => BIish);
@@ -164,6 +166,36 @@ export async function meltThenCreateSpore(props: {
   });
   txSkeleton = injectNewSporeResult.txSkeleton;
 
+  // Insert input cells in the end for particular purpose
+  if (props.postInputs) {
+    for (const cell of props.postInputs!) {
+      const address = encodeToAddress(cell.cellOutput.lock, { config: config.lumos });
+      const customScript = {
+        script: cell.cellOutput.lock,
+        customData: cell.data,
+      };
+      if (props.fromInfos.indexOf(address) < 0 && props.fromInfos.indexOf(customScript) < 0) {
+        props.fromInfos.push(address);
+      }
+      const setupCellResult = await setupCell({
+        txSkeleton,
+        input: cell,
+        updateWitness: props.updateWitness,
+        defaultWitness: props.defaultWitness,
+        config: config.lumos,
+      });
+      txSkeleton = setupCellResult.txSkeleton;
+    }
+  }
+
+  // Insert output cells in the end for particular purpose
+  if (props.postOutputs) {
+    txSkeleton = txSkeleton.update('outputs', (outputs) => {
+      props.postOutputs!.forEach((cell) => (outputs = outputs.push(cell)));
+      return outputs;
+    });
+  }
+
   /**
    * check wether Redeem or Inject Capacity and then Pay fee
    */
@@ -190,22 +222,13 @@ export async function meltThenCreateSpore(props: {
     // Redeem capacity from the exceeded capacity
     const sporeAddress = helpers.encodeToAddress(mintSporeCell.cellOutput.lock, { config: config.lumos });
     const returnExceededCapacityAndPayFeeResult = await returnExceededCapacityAndPayFee({
+      txSkeleton,
       changeAddress: props.changeAddress ?? sporeAddress,
       feeRate: props.feeRate,
-      txSkeleton,
+      fromInfos: props.fromInfos,
       config,
     });
     txSkeleton = returnExceededCapacityAndPayFeeResult.txSkeleton;
-    if (returnExceededCapacityAndPayFeeResult.needToInjectCapacity) {
-      const injectCapacityAndPayFeeResult = await injectCapacityAndPayFee({
-        txSkeleton,
-        fromInfos: props.fromInfos,
-        changeAddress: props.changeAddress,
-        feeRate: props.feeRate,
-        config,
-      });
-      txSkeleton = injectCapacityAndPayFeeResult.txSkeleton;
-    }
   } else {
     /**
      * Inject Capacity and Pay fee

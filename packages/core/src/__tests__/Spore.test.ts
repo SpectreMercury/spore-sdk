@@ -400,8 +400,8 @@ describe('Spore', () => {
         },
         toLock: sporeOwner.lock,
         fromInfos: [sporeOwner.address],
-        prefixInputs: [clusterOwnerCell!],
-        prefixOutputs: [clusterOwnerCell!],
+        postInputs: [clusterOwnerCell!],
+        postOutputs: [clusterOwnerCell!],
         outPoint: sporeCell.outPoint!,
         changeAddress: sporeOwner.address,
         config,
@@ -411,6 +411,7 @@ describe('Spore', () => {
       txSkeleton.get('inputs').forEach((cell) => {
         expect(cell == clusterCell).toBeFalsy();
       });
+      expect(txSkeleton.get('outputs').size).toEqual(3);
       let snapshot = createCapacitySnapshotFromTransactionSkeleton(txSkeleton);
       expect(snapshot.inputsRemainCapacity.toNumber()).gt(0).lt(100000000);
 

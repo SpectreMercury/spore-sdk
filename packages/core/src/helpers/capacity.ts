@@ -287,7 +287,7 @@ export function returnExceededCapacity(props: {
   returnedChange: boolean;
   createdChangeCell: boolean;
   changeCellOutputIndex: number;
-  payFeeByChangeCell: boolean | undefined;
+  neededCapacity: BI;
 } {
   // Summary inputs/outputs capacity status
   let txSkeleton = props.txSkeleton;
@@ -297,7 +297,7 @@ export function returnExceededCapacity(props: {
   let returnedChange: boolean = false;
   let createdChangeCell: boolean = false;
   let changeCellOutputIndex: number = -1;
-  let payFeeByChangeCell: boolean | undefined = undefined;
+  let neededCapacity: BI = BI.from(0);
 
   // If no exceeded capacity, simply end the process
   if (snapshot.inputsRemainCapacity.lte(0)) {
@@ -306,7 +306,7 @@ export function returnExceededCapacity(props: {
       returnedChange,
       createdChangeCell,
       changeCellOutputIndex,
-      payFeeByChangeCell,
+      neededCapacity,
     };
   }
 
@@ -322,10 +322,13 @@ export function returnExceededCapacity(props: {
     .get('fixedEntries')
     .filter(({ field }) => field === 'outputs')
     .map(({ index }) => index);
-  const matchLastOutputIndex = txSkeleton
-    .get('outputs')
-    .filter((_, index) => fixedOutputs.includes(index))
-    .findLastIndex((r) => isScriptValueEquals(r.cellOutput.lock, changeLock) && r.cellOutput.type === void 0);
+  const matchLastOutputIndex = txSkeleton.get('outputs').findLastIndex((r, index) => {
+    if (fixedOutputs.includes(index)) {
+      return false;
+    } else {
+      return isScriptValueEquals(r.cellOutput.lock, changeLock) && r.cellOutput.type === void 0;
+    }
+  });
 
   if (matchLastOutputIndex > -1) {
     // If an unfixed output exists and its lock is the same as change lock,
@@ -349,11 +352,9 @@ export function returnExceededCapacity(props: {
       data: '0x',
     };
     const minimalCapacity = helpers.minimalCellCapacityCompatible(changeCell);
-    if (snapshot.inputsRemainCapacity.gt(minimalCapacity)) {
-      payFeeByChangeCell = true;
-    } else {
+    if (snapshot.inputsRemainCapacity.lt(minimalCapacity)) {
       changeCell.cellOutput.capacity = minimalCapacity.toHexString();
-      payFeeByChangeCell = false;
+      neededCapacity = minimalCapacity.sub(snapshot.inputsRemainCapacity);
     }
     txSkeleton = txSkeleton.update('outputs', (outputs) => {
       changeCellOutputIndex = outputs.size;
@@ -366,6 +367,6 @@ export function returnExceededCapacity(props: {
     returnedChange,
     createdChangeCell,
     changeCellOutputIndex,
-    payFeeByChangeCell,
+    neededCapacity,
   };
 }
