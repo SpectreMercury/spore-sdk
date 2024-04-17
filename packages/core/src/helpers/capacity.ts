@@ -287,7 +287,7 @@ export function returnExceededCapacity(props: {
   returnedChange: boolean;
   createdChangeCell: boolean;
   changeCellOutputIndex: number;
-  neededCapacity: BI;
+  unreturnedCapacity: BI;
 } {
   // Summary inputs/outputs capacity status
   let txSkeleton = props.txSkeleton;
@@ -297,7 +297,7 @@ export function returnExceededCapacity(props: {
   let returnedChange: boolean = false;
   let createdChangeCell: boolean = false;
   let changeCellOutputIndex: number = -1;
-  let neededCapacity: BI = BI.from(0);
+  let unreturnedCapacity: BI = BI.from(0);
 
   // If no exceeded capacity, simply end the process
   if (snapshot.inputsRemainCapacity.lte(0)) {
@@ -306,7 +306,7 @@ export function returnExceededCapacity(props: {
       returnedChange,
       createdChangeCell,
       changeCellOutputIndex,
-      neededCapacity,
+      unreturnedCapacity,
     };
   }
 
@@ -343,7 +343,6 @@ export function returnExceededCapacity(props: {
   } else {
     // If no unfixed output with the same lock found in the outputs,
     // generate a change cell to Transaction.outputs.
-    createdChangeCell = true;
     const changeCell: Cell = {
       cellOutput: {
         capacity: snapshot.inputsRemainCapacity.toHexString(),
@@ -353,13 +352,14 @@ export function returnExceededCapacity(props: {
     };
     const minimalCapacity = helpers.minimalCellCapacityCompatible(changeCell);
     if (snapshot.inputsRemainCapacity.lt(minimalCapacity)) {
-      changeCell.cellOutput.capacity = minimalCapacity.toHexString();
-      neededCapacity = minimalCapacity.sub(snapshot.inputsRemainCapacity);
+      unreturnedCapacity = snapshot.inputsRemainCapacity;
+    } else {
+      createdChangeCell = true;
+      txSkeleton = txSkeleton.update('outputs', (outputs) => {
+        changeCellOutputIndex = outputs.size;
+        return outputs.push(changeCell);
+      });
     }
-    txSkeleton = txSkeleton.update('outputs', (outputs) => {
-      changeCellOutputIndex = outputs.size;
-      return outputs.push(changeCell);
-    });
   }
 
   return {
@@ -367,6 +367,6 @@ export function returnExceededCapacity(props: {
     returnedChange,
     createdChangeCell,
     changeCellOutputIndex,
-    neededCapacity,
+    unreturnedCapacity,
   };
 }

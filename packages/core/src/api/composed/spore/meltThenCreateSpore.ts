@@ -127,7 +127,7 @@ export async function meltThenCreateSpore(props: {
     });
   }
 
-  // Apply `fromInfos` in advance if postInputs is provided
+  // Apply `fromInfos` in advance if `postInputs` is provided
   if (props.postInputs) {
     for (const cell of props.postInputs!) {
       const address = encodeToAddress(cell.cellOutput.lock, { config: config.lumos });
