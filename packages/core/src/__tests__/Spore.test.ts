@@ -412,7 +412,7 @@ describe('Spore', () => {
         expect(cell == clusterCell).toBeFalsy();
       });
       let snapshot = createCapacitySnapshotFromTransactionSkeleton(txSkeleton);
-      expect(snapshot.inputsRemainCapacity).gt(0).lt(100000000);
+      expect(snapshot.inputsRemainCapacity.toNumber()).gt(0).lt(100000000);
 
       // const { hash } = await signAndOrSendTransaction({
       //   account: [sporeOwner, clsuterOwner],

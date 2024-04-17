@@ -191,13 +191,13 @@ export async function injectCapacityAndPayFee(props: {
 export async function returnExceededCapacityAndPayFee(props: {
   txSkeleton: helpers.TransactionSkeletonType;
   changeAddress: Address;
-  fromInfos?: FromInfo[];
   config?: SporeConfig;
   feeRate?: BIish;
 }): Promise<{
   txSkeleton: helpers.TransactionSkeletonType;
   changeCellOutputIndex: number;
   createdChangeCell: boolean;
+  needToInjectCapacity: boolean;
 }> {
   let txSkeleton = props.txSkeleton;
   const config = props.config ?? getSporeConfig();
@@ -222,22 +222,12 @@ export async function returnExceededCapacityAndPayFee(props: {
       txSkeleton,
       config,
     });
-  } else {
-    if (props.fromInfos === void 0) {
-      throw new Error('Cannot pay fee through collection because "fromInfos" is not provided');
-    }
-    txSkeleton = await payFeeThroughCollection({
-      txSkeleton,
-      fromInfos: props.fromInfos,
-      changeAddress: props.changeAddress,
-      feeRate: props.feeRate,
-      config,
-    });
   }
 
   return {
     txSkeleton,
     createdChangeCell: returnExceededCapacityResult.createdChangeCell,
     changeCellOutputIndex: returnExceededCapacityResult.changeCellOutputIndex,
+    needToInjectCapacity: !returnExceededCapacityResult.payFeeByChangeCell,
   };
 }

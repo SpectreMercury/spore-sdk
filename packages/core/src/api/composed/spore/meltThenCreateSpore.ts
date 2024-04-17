@@ -191,12 +191,21 @@ export async function meltThenCreateSpore(props: {
     const sporeAddress = helpers.encodeToAddress(mintSporeCell.cellOutput.lock, { config: config.lumos });
     const returnExceededCapacityAndPayFeeResult = await returnExceededCapacityAndPayFee({
       changeAddress: props.changeAddress ?? sporeAddress,
-      fromInfos: props.fromInfos,
       feeRate: props.feeRate,
       txSkeleton,
       config,
     });
     txSkeleton = returnExceededCapacityAndPayFeeResult.txSkeleton;
+    if (returnExceededCapacityAndPayFeeResult.needToInjectCapacity) {
+      const injectCapacityAndPayFeeResult = await injectCapacityAndPayFee({
+        txSkeleton,
+        fromInfos: props.fromInfos,
+        changeAddress: props.changeAddress,
+        feeRate: props.feeRate,
+        config,
+      });
+      txSkeleton = injectCapacityAndPayFeeResult.txSkeleton;
+    }
   } else {
     /**
      * Inject Capacity and Pay fee

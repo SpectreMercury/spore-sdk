@@ -59,6 +59,9 @@ export async function meltSpore(props: {
     config,
   });
   txSkeleton = returnExceededCapacityAndPayFeeResult.txSkeleton;
+  if (returnExceededCapacityAndPayFeeResult.needToInjectCapacity) {
+    throw new Error("melting Spore shouldn't need to inject capacity");
+  }
 
   return {
     txSkeleton,
