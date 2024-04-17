@@ -127,6 +127,20 @@ export async function meltThenCreateSpore(props: {
     });
   }
 
+  // Apply `fromInfos` in advance if postInputs is provided
+  if (props.postInputs) {
+    for (const cell of props.postInputs!) {
+      const address = encodeToAddress(cell.cellOutput.lock, { config: config.lumos });
+      const customScript = {
+        script: cell.cellOutput.lock,
+        customData: cell.data,
+      };
+      if (props.fromInfos.indexOf(address) < 0 && props.fromInfos.indexOf(customScript) < 0) {
+        props.fromInfos.push(address);
+      }
+    }
+  }
+
   // Inject live spore to Transaction.inputs
   const meltSporeCell = await getSporeByOutPoint(props.outPoint, config);
   const injectLiveSporeCellResult = await injectLiveSporeCell({
@@ -149,12 +163,14 @@ export async function meltThenCreateSpore(props: {
     clusterAgentCell = await getClusterAgentByOutPoint(props.clusterAgentOutPoint, config);
   }
 
+  const prefixOutputLocks = props.prefixOutputs ? props.prefixOutputs.map((cell) => cell.cellOutput.lock) : [];
+  const postOutputLocks = props.postOutputs ? props.postOutputs.map((cell) => cell.cellOutput.lock) : [];
   const injectNewSporeResult = await injectNewSporeOutput({
     txSkeleton,
     data: props.data,
     toLock: props.toLock,
     fromInfos: props.fromInfos,
-    extraOutputLocks: props.prefixOutputs?.map((cell) => cell.cellOutput.lock),
+    extraOutputLocks: prefixOutputLocks.concat(postOutputLocks),
     changeAddress: props.changeAddress,
     updateOutput: props.updateOutput,
     clusterAgent: props.clusterAgent,
@@ -169,14 +185,6 @@ export async function meltThenCreateSpore(props: {
   // Insert input cells in the end for particular purpose
   if (props.postInputs) {
     for (const cell of props.postInputs!) {
-      const address = encodeToAddress(cell.cellOutput.lock, { config: config.lumos });
-      const customScript = {
-        script: cell.cellOutput.lock,
-        customData: cell.data,
-      };
-      if (props.fromInfos.indexOf(address) < 0 && props.fromInfos.indexOf(customScript) < 0) {
-        props.fromInfos.push(address);
-      }
       const setupCellResult = await setupCell({
         txSkeleton,
         input: cell,
