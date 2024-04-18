@@ -1,5 +1,11 @@
 # @spore-sdk/core
 
+## 0.2.0-beta.8
+
+### Patch Changes
+
+- 4fe6a6d: fix a transaction fee calculation bug in `meltThenCreateSpore` method
+
 ## 0.2.0-beta.7
 
 ### Patch Changes
