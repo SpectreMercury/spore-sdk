@@ -340,6 +340,7 @@ describe('Spore', () => {
     }, 60000);
 
     it('Create a Spore', async () => {
+      const aliceWalletCell = await retryQuery(() => getLiveCell(ALICE, false));
       const { txSkeleton, outputIndex, reference } = await createSpore({
         data: {
           contentType: 'text/plain',
@@ -347,6 +348,7 @@ describe('Spore', () => {
         },
         toLock: ALICE.lock,
         fromInfos: [ALICE.address],
+        prefixInputs: [aliceWalletCell!],
         config,
       });
 

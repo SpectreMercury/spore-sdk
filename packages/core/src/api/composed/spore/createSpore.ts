@@ -3,7 +3,13 @@ import { Address, Script } from '@ckb-lumos/base';
 import { FromInfo } from '@ckb-lumos/lumos/common-scripts';
 import { BI, Indexer, helpers, Cell, HexString, OutPoint } from '@ckb-lumos/lumos';
 import { getSporeConfig, getSporeScript, SporeConfig } from '../../../config';
-import { assertTransactionSkeletonSize, injectCapacityAndPayFee, setupCell } from '../../../helpers';
+import {
+  assertTransactionSkeletonSize,
+  createCapacitySnapshotFromTransactionSkeleton,
+  injectCapacityAndPayFee,
+  returnExceededCapacityAndPayFee,
+  setupCell,
+} from '../../../helpers';
 import { injectNewSporeOutput, injectNewSporeIds, SporeDataProps, getClusterAgentByOutPoint } from '../..';
 import { generateCreateSporeAction } from '../../../cobuild/action/spore/createSpore';
 import { injectCommonCobuildProof } from '../../../cobuild/base/witnessLayout';
@@ -108,43 +114,78 @@ export async function createSpore(props: {
   });
   txSkeleton = injectNewSporeResult.txSkeleton;
 
-  // Inject needed capacity and pay fee
-  const injectCapacityAndPayFeeResult = await injectCapacityAndPayFee({
-    txSkeleton,
-    fromInfos: props.fromInfos,
-    changeAddress: props.changeAddress,
-    feeRate: props.feeRate,
-    updateTxSkeletonAfterCollection(_txSkeleton) {
-      // Generate and inject SporeID
-      _txSkeleton = injectNewSporeIds({
-        outputIndices: [injectNewSporeResult.outputIndex],
-        txSkeleton: _txSkeleton,
-        config,
+  const snapshot = createCapacitySnapshotFromTransactionSkeleton(txSkeleton);
+  if (snapshot.inputsCapacity > snapshot.outputsCapacity) {
+    // Generate new Spore Id
+    txSkeleton = injectNewSporeIds({
+      outputIndices: [injectNewSporeResult.outputIndex],
+      txSkeleton,
+      config,
+    });
+
+    // Inject CobuildProof
+    const sporeCell = txSkeleton.get('outputs').get(injectNewSporeResult.outputIndex)!;
+    const sporeScript = getSporeScript(config, 'Spore', sporeCell.cellOutput.type!);
+    if (sporeScript.behaviors?.cobuild) {
+      const actionResult = generateCreateSporeAction({
+        txSkeleton,
+        reference: injectNewSporeResult.reference,
+        outputIndex: injectNewSporeResult.outputIndex,
       });
+      const injectCobuildProofResult = injectCommonCobuildProof({
+        txSkeleton,
+        actions: actionResult.actions,
+      });
+      txSkeleton = injectCobuildProofResult.txSkeleton;
+    }
 
-      // Inject CobuildProof
-      const sporeCell = txSkeleton.get('outputs').get(injectNewSporeResult.outputIndex)!;
-      const sporeScript = getSporeScript(config, 'Spore', sporeCell.cellOutput.type!);
-      if (sporeScript.behaviors?.cobuild) {
-        const actionResult = generateCreateSporeAction({
+    // Redeem extra capacity
+    const sporeAddress = helpers.encodeToAddress(sporeCell.cellOutput.lock, { config: config.lumos });
+    const returnExceededCapacityAndPayFeeResult = await returnExceededCapacityAndPayFee({
+      txSkeleton,
+      changeAddress: props.changeAddress ?? sporeAddress,
+      feeRate: props.feeRate,
+      fromInfos: props.fromInfos,
+      config,
+    });
+    txSkeleton = returnExceededCapacityAndPayFeeResult.txSkeleton;
+  } else {
+    // Inject needed capacity and pay fee
+    const injectCapacityAndPayFeeResult = await injectCapacityAndPayFee({
+      txSkeleton,
+      fromInfos: props.fromInfos,
+      changeAddress: props.changeAddress,
+      feeRate: props.feeRate,
+      updateTxSkeletonAfterCollection(_txSkeleton) {
+        // Generate and inject SporeID
+        _txSkeleton = injectNewSporeIds({
+          outputIndices: [injectNewSporeResult.outputIndex],
           txSkeleton: _txSkeleton,
-          reference: injectNewSporeResult.reference,
-          outputIndex: injectNewSporeResult.outputIndex,
+          config,
         });
-        const injectCobuildProofResult = injectCommonCobuildProof({
-          txSkeleton: _txSkeleton,
-          actions: actionResult.actions,
-        });
-        _txSkeleton = injectCobuildProofResult.txSkeleton;
-      }
 
-      return _txSkeleton;
-    },
-    config,
-  });
-  txSkeleton = injectCapacityAndPayFeeResult.txSkeleton;
+        // Inject CobuildProof
+        const sporeCell = txSkeleton.get('outputs').get(injectNewSporeResult.outputIndex)!;
+        const sporeScript = getSporeScript(config, 'Spore', sporeCell.cellOutput.type!);
+        if (sporeScript.behaviors?.cobuild) {
+          const actionResult = generateCreateSporeAction({
+            txSkeleton: _txSkeleton,
+            reference: injectNewSporeResult.reference,
+            outputIndex: injectNewSporeResult.outputIndex,
+          });
+          const injectCobuildProofResult = injectCommonCobuildProof({
+            txSkeleton: _txSkeleton,
+            actions: actionResult.actions,
+          });
+          _txSkeleton = injectCobuildProofResult.txSkeleton;
+        }
 
-  // TODO: If creating a clustered spore, validate the transaction
+        return _txSkeleton;
+      },
+      config,
+    });
+    txSkeleton = injectCapacityAndPayFeeResult.txSkeleton;
+  }
 
   // Make sure the tx size is in range (if needed)
   if (typeof maxTransactionSize === 'number') {
