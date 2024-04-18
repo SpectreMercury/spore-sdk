@@ -5,8 +5,43 @@ import { SporeDataProps, injectNewSporeOutput, injectNewSporeIds, getClusterAgen
 import { getSporeByOutPoint, injectLiveSporeCell } from '../..';
 import { getSporeConfig, getSporeScript, SporeConfig } from '../../../config';
 import { generateCreateSporeAction, generateMeltSporeAction, injectCommonCobuildProof } from '../../../cobuild';
-import { assertTransactionSkeletonSize, injectCapacityAndPayFee, setupCell } from '../../../helpers';
-import { encodeToAddress } from '@ckb-lumos/lumos/helpers';
+import {
+  assertTransactionSkeletonSize,
+  createCapacitySnapshotFromTransactionSkeleton,
+  injectCapacityAndPayFee,
+  returnExceededCapacityAndPayFee,
+  setupCell,
+} from '../../../helpers';
+import { TransactionSkeletonType, encodeToAddress } from '@ckb-lumos/lumos/helpers';
+
+function InjectCobuildForMeltThenCreateSpore(
+  meltSporeInputIndex: number,
+  mintSporeCell: Cell,
+  mintSporeReference: Awaited<ReturnType<typeof injectNewSporeOutput>>['reference'],
+  mintSporeOutputIndex: number,
+  txSkeleton: TransactionSkeletonType,
+  config: SporeConfig,
+): TransactionSkeletonType {
+  const sporeScript = getSporeScript(config, 'Spore', mintSporeCell.cellOutput.type!);
+  if (sporeScript.behaviors?.cobuild) {
+    const meltActionResult = generateMeltSporeAction({
+      txSkeleton,
+      inputIndex: meltSporeInputIndex,
+    });
+    const mintActionResult = generateCreateSporeAction({
+      txSkeleton,
+      reference: mintSporeReference,
+      outputIndex: mintSporeOutputIndex,
+    });
+    const actions = meltActionResult.actions.concat(mintActionResult.actions);
+    const injectCobuildProofResult = injectCommonCobuildProof({
+      txSkeleton,
+      actions,
+    });
+    txSkeleton = injectCobuildProofResult.txSkeleton;
+  }
+  return txSkeleton;
+}
 
 export async function meltThenCreateSpore(props: {
   outPoint: OutPoint;
@@ -20,6 +55,8 @@ export async function meltThenCreateSpore(props: {
   fromInfos: FromInfo[];
   prefixInputs?: Cell[];
   prefixOutputs?: Cell[];
+  postInputs?: Cell[];
+  postOutputs?: Cell[];
   feeRate?: BIish | undefined;
   updateOutput?: (cell: Cell) => Cell;
   capacityMargin?: BIish | ((cell: Cell, margin: BI) => BIish);
@@ -90,6 +127,20 @@ export async function meltThenCreateSpore(props: {
     });
   }
 
+  // Apply `fromInfos` in advance if `postInputs` is provided
+  if (props.postInputs) {
+    for (const cell of props.postInputs!) {
+      const address = encodeToAddress(cell.cellOutput.lock, { config: config.lumos });
+      const customScript = {
+        script: cell.cellOutput.lock,
+        customData: cell.data,
+      };
+      if (props.fromInfos.indexOf(address) < 0 && props.fromInfos.indexOf(customScript) < 0) {
+        props.fromInfos.push(address);
+      }
+    }
+  }
+
   // Inject live spore to Transaction.inputs
   const meltSporeCell = await getSporeByOutPoint(props.outPoint, config);
   const injectLiveSporeCellResult = await injectLiveSporeCell({
@@ -112,12 +163,14 @@ export async function meltThenCreateSpore(props: {
     clusterAgentCell = await getClusterAgentByOutPoint(props.clusterAgentOutPoint, config);
   }
 
+  const prefixOutputLocks = props.prefixOutputs ? props.prefixOutputs.map((cell) => cell.cellOutput.lock) : [];
+  const postOutputLocks = props.postOutputs ? props.postOutputs.map((cell) => cell.cellOutput.lock) : [];
   const injectNewSporeResult = await injectNewSporeOutput({
     txSkeleton,
     data: props.data,
     toLock: props.toLock,
     fromInfos: props.fromInfos,
-    extraOutputLocks: props.prefixOutputs?.map((cell) => cell.cellOutput.lock),
+    extraOutputLocks: prefixOutputLocks.concat(postOutputLocks),
     changeAddress: props.changeAddress,
     updateOutput: props.updateOutput,
     clusterAgent: props.clusterAgent,
@@ -129,52 +182,98 @@ export async function meltThenCreateSpore(props: {
   });
   txSkeleton = injectNewSporeResult.txSkeleton;
 
-  /**
-   * Inject Capacity and Pay fee
-   */
-
-  const injectCapacityAndPayFeeResult = await injectCapacityAndPayFee({
-    txSkeleton,
-    fromInfos: props.fromInfos,
-    changeAddress: props.changeAddress,
-    config,
-    feeRate: props.feeRate,
-    updateTxSkeletonAfterCollection(_txSkeleton) {
-      // Generate and inject SporeID
-      _txSkeleton = injectNewSporeIds({
-        outputIndices: [injectNewSporeResult.outputIndex],
-        txSkeleton: _txSkeleton,
-        config,
+  // Insert input cells in the end for particular purpose
+  if (props.postInputs) {
+    for (const cell of props.postInputs!) {
+      const setupCellResult = await setupCell({
+        txSkeleton,
+        input: cell,
+        updateWitness: props.updateWitness,
+        defaultWitness: props.defaultWitness,
+        config: config.lumos,
       });
+      txSkeleton = setupCellResult.txSkeleton;
+    }
+  }
 
-      /**
-       * Complete Co-Build WitnessLayout
-       */
+  // Insert output cells in the end for particular purpose
+  if (props.postOutputs) {
+    txSkeleton = txSkeleton.update('outputs', (outputs) => {
+      props.postOutputs!.forEach((cell) => (outputs = outputs.push(cell)));
+      return outputs;
+    });
+  }
 
-      const mintSporeCell = txSkeleton.get('outputs').get(injectNewSporeResult.outputIndex)!;
-      const sporeScript = getSporeScript(config, 'Spore', mintSporeCell.cellOutput.type!);
-      if (sporeScript.behaviors?.cobuild) {
-        const meltActionResult = generateMeltSporeAction({
-          txSkeleton: _txSkeleton,
-          inputIndex: injectLiveSporeCellResult.inputIndex,
-        });
-        const mintActionResult = generateCreateSporeAction({
-          txSkeleton: _txSkeleton,
-          reference: injectNewSporeResult.reference,
-          outputIndex: injectNewSporeResult.outputIndex,
-        });
-        const actions = meltActionResult.actions.concat(mintActionResult.actions);
-        const injectCobuildProofResult = injectCommonCobuildProof({
-          txSkeleton: _txSkeleton,
-          actions,
-        });
-        _txSkeleton = injectCobuildProofResult.txSkeleton;
-      }
+  /**
+   * check wether Redeem or Inject Capacity and then Pay fee
+   */
+  const snapshot = createCapacitySnapshotFromTransactionSkeleton(txSkeleton);
+  if (snapshot.inputsCapacity > snapshot.outputsCapacity) {
+    /**
+     * Complete Co-Build WitnessLayout
+     */
+    txSkeleton = injectNewSporeIds({
+      outputIndices: [injectNewSporeResult.outputIndex],
+      txSkeleton,
+      config,
+    });
+    const mintSporeCell = txSkeleton.get('outputs').get(injectNewSporeResult.outputIndex)!;
+    txSkeleton = InjectCobuildForMeltThenCreateSpore(
+      injectLiveSporeCellResult.inputIndex,
+      mintSporeCell,
+      injectNewSporeResult.reference,
+      injectNewSporeResult.outputIndex,
+      txSkeleton,
+      config,
+    );
 
-      return _txSkeleton;
-    },
-  });
-  txSkeleton = injectCapacityAndPayFeeResult.txSkeleton;
+    // Redeem capacity from the exceeded capacity
+    const sporeAddress = helpers.encodeToAddress(mintSporeCell.cellOutput.lock, { config: config.lumos });
+    const returnExceededCapacityAndPayFeeResult = await returnExceededCapacityAndPayFee({
+      txSkeleton,
+      changeAddress: props.changeAddress ?? sporeAddress,
+      feeRate: props.feeRate,
+      fromInfos: props.fromInfos,
+      config,
+    });
+    txSkeleton = returnExceededCapacityAndPayFeeResult.txSkeleton;
+  } else {
+    /**
+     * Inject Capacity and Pay fee
+     */
+    const injectCapacityAndPayFeeResult = await injectCapacityAndPayFee({
+      txSkeleton,
+      fromInfos: props.fromInfos,
+      changeAddress: props.changeAddress,
+      config,
+      feeRate: props.feeRate,
+      updateTxSkeletonAfterCollection(_txSkeleton) {
+        // Generate and inject SporeID
+        _txSkeleton = injectNewSporeIds({
+          outputIndices: [injectNewSporeResult.outputIndex],
+          txSkeleton: _txSkeleton,
+          config,
+        });
+
+        /**
+         * Complete Co-Build WitnessLayout
+         */
+
+        const mintSporeCell = txSkeleton.get('outputs').get(injectNewSporeResult.outputIndex)!;
+        _txSkeleton = InjectCobuildForMeltThenCreateSpore(
+          injectLiveSporeCellResult.inputIndex,
+          mintSporeCell,
+          injectNewSporeResult.reference,
+          injectNewSporeResult.outputIndex,
+          _txSkeleton,
+          config,
+        );
+
+        return _txSkeleton;
+      },
+    });
+    txSkeleton = injectCapacityAndPayFeeResult.txSkeleton;
+  }
 
   // Make sure the tx size is in range (if needed)
   if (typeof maxTransactionSize === 'number') {

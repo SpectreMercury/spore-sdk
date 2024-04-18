@@ -2,7 +2,12 @@ import { describe, expect, it, afterAll } from 'vitest';
 import { BI, Cell, Indexer, helpers } from '@ckb-lumos/lumos';
 import { ParamsFormatter } from '@ckb-lumos/rpc';
 import { getSporeScript } from '../config';
-import { bufferToRawString, bytifyRawString, getCellByLock } from '../helpers';
+import {
+  bufferToRawString,
+  bytifyRawString,
+  createCapacitySnapshotFromTransactionSkeleton,
+  getCellByLock,
+} from '../helpers';
 import {
   createSpore,
   transferSpore,
@@ -335,13 +340,15 @@ describe('Spore', () => {
     }, 60000);
 
     it('Create a Spore', async () => {
+      const aliceWalletCell = await retryQuery(() => getLiveCell(ALICE, false));
       const { txSkeleton, outputIndex, reference } = await createSpore({
         data: {
           contentType: 'text/plain',
-          content: bytifyRawString('blind box spore'),
+          content: bytifyRawString('blind box spore with bigger capacity than opened one'),
         },
         toLock: ALICE.lock,
         fromInfos: [ALICE.address],
+        prefixInputs: [aliceWalletCell!],
         config,
       });
 
@@ -389,13 +396,13 @@ describe('Spore', () => {
       expect(clusterOwnerCell).toBeDefined();
       const { txSkeleton, outputIndex } = await meltThenCreateSpore({
         data: {
-          contentType: 'text/plain',
-          content: bytifyRawString('dob spore'),
+          contentType: 'dob/0',
+          content: bytifyRawString('opened dob spore'),
           clusterId,
         },
         toLock: sporeOwner.lock,
-        fromInfos: [sporeOwner.address],
-        prefixInputs: [clusterOwnerCell!],
+        fromInfos: [sporeOwner.address, clsuterOwner.address],
+        postInputs: [clusterOwnerCell!],
         prefixOutputs: [clusterOwnerCell!],
         outPoint: sporeCell.outPoint!,
         changeAddress: sporeOwner.address,
@@ -406,6 +413,9 @@ describe('Spore', () => {
       txSkeleton.get('inputs').forEach((cell) => {
         expect(cell == clusterCell).toBeFalsy();
       });
+      expect(txSkeleton.get('outputs').size).toEqual(3);
+      let snapshot = createCapacitySnapshotFromTransactionSkeleton(txSkeleton);
+      expect(snapshot.inputsRemainCapacity.toNumber()).gt(0).lt(100000000);
 
       // const { hash } = await signAndOrSendTransaction({
       //   account: [sporeOwner, clsuterOwner],

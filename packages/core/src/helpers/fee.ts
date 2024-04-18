@@ -191,7 +191,9 @@ export async function injectCapacityAndPayFee(props: {
 export async function returnExceededCapacityAndPayFee(props: {
   txSkeleton: helpers.TransactionSkeletonType;
   changeAddress: Address;
+  fromInfos?: FromInfo[];
   config?: SporeConfig;
+  feeRate?: BIish;
 }): Promise<{
   txSkeleton: helpers.TransactionSkeletonType;
   changeCellOutputIndex: number;
@@ -213,12 +215,39 @@ export async function returnExceededCapacityAndPayFee(props: {
     throw new Error(`Cannot pay fee with change cell because no change was returned`);
   }
 
-  // Pay fee by change cell in outputs
-  txSkeleton = await payFeeByOutput({
-    outputIndex: returnExceededCapacityResult.changeCellOutputIndex,
-    txSkeleton,
-    config,
-  });
+  if (returnExceededCapacityResult.unreturnedCapacity.gt(0)) {
+    if (props.fromInfos === void 0) {
+      throw new Error(`Cannot pay fee with change cell because fromInfos is required`);
+    }
+    // Pay fee by capacity collection
+    const feeRate = props.feeRate ?? (await getMinFeeRate(config.ckbNodeUrl));
+    const fee = calculateFeeByTransactionSkeleton(txSkeleton, feeRate);
+    txSkeleton = await common.injectCapacity(txSkeleton, props.fromInfos, 1, props.changeAddress, void 0, {
+      enableDeductCapacity: false,
+      config: props.config?.lumos,
+    });
+    txSkeleton = txSkeleton.update('outputs', (outputs) => {
+      outputs.update(-1, (output) => {
+        if (output) {
+          const capacity = BI.from(output.cellOutput.capacity);
+          output.cellOutput.capacity = capacity
+            .add(returnExceededCapacityResult.unreturnedCapacity)
+            .sub(fee)
+            .toHexString();
+        }
+        return output;
+      });
+      return outputs;
+    });
+  } else {
+    // Pay fee by change cell in outputs
+    txSkeleton = await payFeeByOutput({
+      outputIndex: returnExceededCapacityResult.changeCellOutputIndex,
+      txSkeleton,
+      feeRate: props.feeRate,
+      config,
+    });
+  }
 
   return {
     txSkeleton,
