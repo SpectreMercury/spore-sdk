@@ -1,7 +1,7 @@
 import { BIish } from '@ckb-lumos/bi';
 import { PackedSince } from '@ckb-lumos/base';
 import { BI, Cell, helpers, HexString } from '@ckb-lumos/lumos';
-import { addCellDep } from '@ckb-lumos/lumos/helpers';
+import { addCellDep, parseAddress } from '@ckb-lumos/lumos/helpers';
 import { decodeContentType, isContentTypeValid, setAbsoluteCapacityMargin, setupCell } from '../../../helpers';
 import { getSporeConfig, getSporeScript, SporeConfig } from '../../../config';
 import { unpackToRawSporeData } from '../../../codec';
@@ -15,6 +15,7 @@ export async function injectLiveSporeCell(props: {
   capacityMargin?: BIish | ((cell: Cell, margin: BI) => BIish);
   updateWitness?: HexString | ((witness: HexString) => HexString);
   defaultWitness?: HexString;
+  skipCheckContentType?: boolean;
   since?: PackedSince;
   config?: SporeConfig;
 }): Promise<{
@@ -72,7 +73,8 @@ export async function injectLiveSporeCell(props: {
 
   // Validate SporeData.contentType
   const sporeData = unpackToRawSporeData(sporeCell.data);
-  if (!isContentTypeValid(sporeData.contentType)) {
+  const skipCheckContentType = props.skipCheckContentType ?? false;
+  if (!skipCheckContentType && !isContentTypeValid(sporeData.contentType)) {
     throw new Error(`Spore has specified invalid ContentType: ${sporeData.contentType}`);
   }
 

@@ -46,6 +46,7 @@ export async function injectNewSporeOutput(props: {
     defaultWitness?: HexString;
     since?: PackedSince;
   };
+  skipCheckContentType?: boolean;
   mutant?: {
     paymentAmount?: (minPayment: BI, lock: Script, cell: Cell) => BIish;
   };
@@ -151,7 +152,8 @@ export async function injectNewSporeOutput(props: {
 
   // Validate SporeData.contentType
   const contentType = setContentTypeParameters(sporeData.contentType, sporeData.contentTypeParameters ?? {});
-  if (!isContentTypeValid(contentType)) {
+  const skipCheckContentType = props.skipCheckContentType ?? false;
+  if (!skipCheckContentType && !isContentTypeValid(contentType)) {
     throw new Error(`Spore has specified an invalid data.contentType: ${contentType}`);
   }
 
