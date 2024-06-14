@@ -40,6 +40,7 @@ export async function createSpore(props: {
   mutant?: {
     paymentAmount?: (minPayment: BI, lock: Script, cell: Cell) => BIish;
   };
+  skipCheckContentType?: boolean;
   maxTransactionSize?: number | false;
   feeRate?: BIish | undefined;
   config?: SporeConfig;
@@ -108,6 +109,7 @@ export async function createSpore(props: {
     clusterAgent: props.clusterAgent,
     cluster: props.cluster,
     mutant: props.mutant,
+    skipCheckContentType: props.skipCheckContentType,
     clusterAgentCell,
     capacityMargin,
     config,
