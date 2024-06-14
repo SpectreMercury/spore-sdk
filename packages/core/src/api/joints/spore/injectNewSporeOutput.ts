@@ -209,15 +209,17 @@ export async function injectNewSporeOutput(props: {
 
   // Inject Mutants as cellDeps, and inject payments if needed
   let injectLiveMutantReferencesResult: Awaited<ReturnType<typeof injectLiveMutantReferences>> | undefined;
-  const decodedContentType = decodeContentType(contentType);
-  if (decodedContentType.parameters.mutant !== void 0) {
-    injectLiveMutantReferencesResult = await injectLiveMutantReferences({
-      txSkeleton,
-      mutantIds: decodedContentType.parameters.mutant,
-      paymentAmount: props.mutant?.paymentAmount,
-      config,
-    });
-    txSkeleton = injectLiveMutantReferencesResult.txSkeleton;
+  if (!skipCheckContentType) {
+    const decodedContentType = decodeContentType(contentType);
+    if (decodedContentType.parameters.mutant !== void 0) {
+      injectLiveMutantReferencesResult = await injectLiveMutantReferences({
+        txSkeleton,
+        mutantIds: decodedContentType.parameters.mutant,
+        paymentAmount: props.mutant?.paymentAmount,
+        config,
+      });
+      txSkeleton = injectLiveMutantReferencesResult.txSkeleton;
+    }
   }
 
   // Add Spore relevant cellDeps

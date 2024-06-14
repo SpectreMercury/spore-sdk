@@ -73,25 +73,23 @@ export async function injectLiveSporeCell(props: {
   // Validate SporeData.contentType
   const sporeData = unpackToRawSporeData(sporeCell.data);
   // note: consider the compatibility of custom spore-like scripts, skip content-type check is allowed
-  // if (!isContentTypeValid(sporeData.contentType)) {
-  //   throw new Error(`Spore has specified invalid ContentType: ${sporeData.contentType}`);
-  // }
+  if (isContentTypeValid(sporeData.contentType)) {
+    // Add Mutant cells as cellDeps
+    const decodedContentType = decodeContentType(sporeData.contentType);
+    if (decodedContentType.parameters.mutant !== void 0) {
+      const mutantScript = getSporeScript(config, 'Mutant');
+      txSkeleton = addCellDep(txSkeleton, mutantScript.cellDep);
 
-  // Add Mutant cells as cellDeps
-  const decodedContentType = decodeContentType(sporeData.contentType);
-  if (decodedContentType.parameters.mutant !== void 0) {
-    const mutantScript = getSporeScript(config, 'Mutant');
-    txSkeleton = addCellDep(txSkeleton, mutantScript.cellDep);
+      const mutantParameter = decodedContentType.parameters.mutant;
+      const mutantIds = Array.isArray(mutantParameter) ? mutantParameter : [mutantParameter];
+      const mutantCells = await Promise.all(mutantIds.map((id) => getMutantById(id, config)));
 
-    const mutantParameter = decodedContentType.parameters.mutant;
-    const mutantIds = Array.isArray(mutantParameter) ? mutantParameter : [mutantParameter];
-    const mutantCells = await Promise.all(mutantIds.map((id) => getMutantById(id, config)));
-
-    for (const mutantCell of mutantCells) {
-      txSkeleton = addCellDep(txSkeleton, {
-        outPoint: mutantCell.outPoint!,
-        depType: 'code',
-      });
+      for (const mutantCell of mutantCells) {
+        txSkeleton = addCellDep(txSkeleton, {
+          outPoint: mutantCell.outPoint!,
+          depType: 'code',
+        });
+      }
     }
   }
 
