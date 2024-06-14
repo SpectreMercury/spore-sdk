@@ -15,7 +15,6 @@ export async function injectLiveSporeCell(props: {
   capacityMargin?: BIish | ((cell: Cell, margin: BI) => BIish);
   updateWitness?: HexString | ((witness: HexString) => HexString);
   defaultWitness?: HexString;
-  skipCheckContentType?: boolean;
   since?: PackedSince;
   config?: SporeConfig;
 }): Promise<{
@@ -73,10 +72,10 @@ export async function injectLiveSporeCell(props: {
 
   // Validate SporeData.contentType
   const sporeData = unpackToRawSporeData(sporeCell.data);
-  const skipCheckContentType = props.skipCheckContentType ?? false;
-  if (!skipCheckContentType && !isContentTypeValid(sporeData.contentType)) {
-    throw new Error(`Spore has specified invalid ContentType: ${sporeData.contentType}`);
-  }
+  // note: consider the compatibility of custom spore-like scripts, skip content-type check is allowed
+  // if (!isContentTypeValid(sporeData.contentType)) {
+  //   throw new Error(`Spore has specified invalid ContentType: ${sporeData.contentType}`);
+  // }
 
   // Add Mutant cells as cellDeps
   const decodedContentType = decodeContentType(sporeData.contentType);
