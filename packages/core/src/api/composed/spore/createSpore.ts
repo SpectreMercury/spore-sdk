@@ -117,7 +117,7 @@ export async function createSpore(props: {
   txSkeleton = injectNewSporeResult.txSkeleton;
 
   const snapshot = createCapacitySnapshotFromTransactionSkeleton(txSkeleton);
-  if (snapshot.inputsCapacity > snapshot.outputsCapacity) {
+  if (snapshot.inputsCapacity.gt(snapshot.outputsCapacity)) {
     // Generate new Spore Id
     txSkeleton = injectNewSporeIds({
       outputIndices: [injectNewSporeResult.outputIndex],

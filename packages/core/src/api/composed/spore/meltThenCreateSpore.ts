@@ -208,7 +208,7 @@ export async function meltThenCreateSpore(props: {
    * check wether Redeem or Inject Capacity and then Pay fee
    */
   const snapshot = createCapacitySnapshotFromTransactionSkeleton(txSkeleton);
-  if (snapshot.inputsCapacity > snapshot.outputsCapacity) {
+  if (snapshot.inputsCapacity.gt(snapshot.outputsCapacity)) {
     /**
      * Complete Co-Build WitnessLayout
      */
