@@ -1,5 +1,15 @@
 # @spore-sdk/core
 
+## 0.2.0-beta.9
+
+### Minor Changes
+
+- 9b4983f: export co-build interfaces and able to skip checking content-type
+
+### Patch Changes
+
+- 2bc5277: solve bigint comparasion bug
+
 ## 0.2.0-beta.8
 
 ### Patch Changes
