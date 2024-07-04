@@ -28,7 +28,11 @@ const TESTNET_SPORE_CONFIG: SporeConfig<PredefinedTestnetSporeScriptName> = {
           },
           behaviors: {
             lockProxy: true,
-            dynamicCelldep: '0x80f0d4bf6b3951911aa6b98cc609d477a8a10b903b35cfd528d098e95c36f680',
+            dynamicCelldep: {
+              codeHash: '0x00000000000000000000000000000000000000000000000000545950455f4944',
+              hashType: 'type',
+              args: '0x80f0d4bf6b3951911aa6b98cc609d477a8a10b903b35cfd528d098e95c36f680',
+            },
           },
         },
         {
@@ -215,7 +219,11 @@ const MAINNET_SPORE_CONFIG: SporeConfig<PredefinedMainnetSporeScriptName> = {
           },
           behaviors: {
             lockProxy: true,
-            dynamicCelldep: '0x62312cd846659e188b05da11dc3f080b083c27371ea701d6026e11e713e0e3de',
+            dynamicCelldep: {
+              codeHash: '0x00000000000000000000000000000000000000000000000000545950455f4944',
+              hashType: 'type',
+              args: '0x62312cd846659e188b05da11dc3f080b083c27371ea701d6026e11e713e0e3de',
+            },
           },
         },
         {
