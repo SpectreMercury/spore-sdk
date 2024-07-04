@@ -75,8 +75,8 @@ export async function injectLiveSporeCell(props: {
 
   // Add Spore script as cellDep
   let sporeCelldep = sporeScript.cellDep;
-  if (sporeScript.behaviors?.dynamicCeldep) {
-    const args = sporeScript.behaviors?.dynamicCeldep;
+  if (sporeScript.behaviors?.dynamicCelldep) {
+    const args = sporeScript.behaviors?.dynamicCelldep;
     const typeIdScript: Script = {
       codeHash: '0x00000000000000000000000000000000000000000000000000545950455f4944',
       hashType: 'type',

@@ -36,5 +36,5 @@ export interface SporeScriptBehaviors {
   lockProxy?: boolean;
   cobuild?: boolean;
   clusterDataVersion?: ClusterDataVersion;
-  dynamicCeldep?: HexString;
+  dynamicCelldep?: HexString;
 }
