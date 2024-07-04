@@ -254,7 +254,7 @@ export async function createMultipleSpores(props: {
         if (props.fromInfos.indexOf(address) < 0 && props.fromInfos.indexOf(customScript) < 0) {
           props.fromInfos.push(address);
         }
-        inputs.push(cell);
+        inputs = inputs.push(cell);
       }
       return inputs;
     });
