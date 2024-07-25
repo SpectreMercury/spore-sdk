@@ -52,7 +52,7 @@ describe('Multiple', options, () => {
     // dirty but works
     await new Promise((f) => setTimeout(f, 20000));
     const spore_cells = MultipleTestSPORE_OUTPOINT_RECORDS.map((spore) => spore.outPoint);
-    const txSkeleton = await transferMultipleSpore({
+    const { txSkeleton, inputIndecies, outputIndecies } = await transferMultipleSpore({
       outPoints: spore_cells,
       fromInfos: [CHARLIE.address],
       toLock: ALICE.lock,

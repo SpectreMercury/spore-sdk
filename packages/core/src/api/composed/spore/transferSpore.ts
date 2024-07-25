@@ -133,7 +133,11 @@ export async function transferMultipleSpore(props: {
   since?: PackedSince;
   feeRate?: BIish | undefined;
   config?: SporeConfig;
-}): Promise<helpers.TransactionSkeletonType> {
+}): Promise<{
+  txSkeleton: helpers.TransactionSkeletonType;
+  inputIndecies: number[];
+  outputIndecies: number[];
+}> {
   // Env
   const config = props.config ?? getSporeConfig();
   const indexer = new Indexer(config.ckbIndexerUrl, config.ckbNodeUrl);
@@ -237,5 +241,9 @@ export async function transferMultipleSpore(props: {
     }
   }
 
-  return txSkeleton;
+  return {
+    txSkeleton,
+    inputIndecies: injectLiveSporeCellResults.map((cell) => cell.inputIndex),
+    outputIndecies: injectLiveSporeCellResults.map((cell) => cell.outputIndex),
+  };
 }
