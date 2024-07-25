@@ -11,6 +11,12 @@ export const CLUSTER_OUTPOINT_RECORDS: OutPointRecord[] = [];
 export const CLUSTER_PROXY_OUTPOINT_RECORDS: OutPointRecord[] = [];
 export const CLUSTER_AGENT_OUTPOINT_RECORDS: OutPointRecord[] = [];
 
+export interface OutpointWithSporeIdRecord extends OutPointRecord {
+  sporeId: string;
+}
+
+export const MultipleTestSPORE_OUTPOINT_RECORDS: OutpointWithSporeIdRecord[] = [];
+
 export async function cleanupRecords(props: { name: string }) {
   const [sporeCleanupResults, clusterProxyCleanupResults, clusterAgentCleanupResults] = await Promise.all([
     cleanupSporeRecords(),
