@@ -4,3 +4,4 @@ export * from './check';
 export * from './retry';
 export * from './file';
 export * from './config';
+export * from './wallet';
